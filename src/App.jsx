@@ -265,10 +265,13 @@ function DewPointModal({ dewPoint, humidity, tempF, onClose, scale }) {
 export default function App() {
   const { weather, alerts, locationName, loading, error } = useWeatherData();
   const [activeView, setActiveView] = useState('today');
-  const [fontSize, setFontSize] = useState('medium');
+  const [fontSize, setFontSizeState] = useState(() => localStorage.getItem('mw-fontSize') || 'medium');
   const [showDewInfo, setShowDewInfo] = useState(false);
-  const [briefMode, setBriefMode] = useState('short');
+  const [briefMode, setBriefModeState] = useState(() => localStorage.getItem('mw-briefMode') || 'short');
   const s = FONT_SIZES[fontSize].scale;
+
+  const updateFontSize = (size) => { setFontSizeState(size); localStorage.setItem('mw-fontSize', size); };
+  const updateBriefMode = (mode) => { setBriefModeState(mode); localStorage.setItem('mw-briefMode', mode); };
   const now = new Date();
 
   // Loading
@@ -391,7 +394,7 @@ export default function App() {
           <div style={{ textAlign: 'right' }}>
             <div style={{ display: 'flex', gap: '2px', justifyContent: 'flex-end', marginBottom: '8px' }}>
               {Object.entries(FONT_SIZES).map(([key, val]) => (
-                <button key={key} onClick={() => setFontSize(key)} style={{
+                <button key={key} onClick={() => updateFontSize(key)} style={{
                   background: fontSize === key ? 'rgba(94,177,191,0.2)' : 'rgba(255,255,255,0.04)',
                   border: fontSize === key ? '1px solid rgba(94,177,191,0.3)' : `1px solid ${THEME.border}`,
                   borderRadius: '4px', color: fontSize === key ? THEME.accent : THEME.textFaint,
@@ -501,7 +504,7 @@ export default function App() {
               { id: 'short', label: 'Quick' },
               { id: 'full', label: 'Full' },
             ].map(opt => (
-              <button key={opt.id} onClick={() => setBriefMode(opt.id)} style={{
+              <button key={opt.id} onClick={() => updateBriefMode(opt.id)} style={{
                 background: briefMode === opt.id ? 'rgba(94,177,191,0.15)' : 'transparent',
                 border: 'none', color: briefMode === opt.id ? THEME.accent : THEME.textFaint,
                 padding: '4px 12px', fontSize: `${10 * s}px`, fontWeight: 500, cursor: 'pointer',
