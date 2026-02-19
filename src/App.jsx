@@ -253,7 +253,7 @@ function DewPointModal({ dewPoint, humidity, tempF, onClose, scale }) {
             💡 Quick rule of thumb
           </div>
           <p style={{ fontSize: `${14 * scale}px`, lineHeight: 1.6, color: THEME.textSecondary, margin: 0 }}>
-            Under 50° = comfortable · 50–60° = noticeable · Over 60° = uncomfortable.
+            Under 50° = comfortable · 50–60° = noticeable · 60–70° = uncomfortable · Over 70° = dangerous. Limit outdoor activity.
             If the dew point is within a few degrees of the temperature, expect fog or condensation.
           </p>
         </div>

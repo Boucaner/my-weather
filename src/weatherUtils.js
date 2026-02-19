@@ -53,7 +53,8 @@ export const DEW_POINT_LEVELS = [
   { max: 60, label: "Sticky", color: "#f4a261", desc: "Noticeably humid. Outdoor activity starts feeling heavier. Sweat doesn't evaporate as easily." },
   { max: 65, label: "Muggy", color: "#e76f51", desc: "Uncomfortable for most people. You'll feel sticky. AC makes a big difference." },
   { max: 70, label: "Oppressive", color: "#d62828", desc: "Very uncomfortable. Sweat won't evaporate well. Heat exhaustion risk increases with activity." },
-  { max: 999, label: "Tropical misery", color: "#9d0208", desc: "Dangerously humid. Limit outdoor exertion. Your body can't cool itself efficiently." },
+  { max: 75, label: "Dangerous", color: "#9d0208", desc: "Your body cannot cool itself efficiently. Heat illness is a real risk, especially for children, elderly, and anyone exerting themselves outdoors. Limit time outside." },
+  { max: 999, label: "Extreme danger", color: "#6a040f", desc: "Potentially life-threatening conditions. Heatstroke risk is high even with limited activity. Stay indoors in AC. Check on elderly neighbors. This is a medical emergency waiting to happen." },
 ];
 
 export function getDewPointLevel(dewPoint) {
