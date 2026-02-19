@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useWeatherData } from './useWeatherData.js';
+import RadarMap from './RadarMap.jsx';
 import {
   getWeatherInfo, getWindDirection, calcDewPointFromTempHumidity, getDewPointLevel,
   DEW_POINT_LEVELS, generateShortBrief, generateDailySummary, generateTomorrowSummary
@@ -516,6 +517,9 @@ export default function App() {
           <p style={{ fontSize: `${13 * s}px`, lineHeight: 1.6, color: THEME.tomorrowText, margin: 0 }}>{tomorrowSummary}</p>
         </div>
       </div>
+
+      {/* Radar */}
+      <RadarMap lat={weather.latitude} lon={weather.longitude} theme={THEME} />
 
       {/* View Toggle */}
       <div style={{

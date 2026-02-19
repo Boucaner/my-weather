@@ -75,6 +75,30 @@ export default defineConfig({
               },
               networkTimeoutSeconds: 5
             }
+          },
+          {
+            // Cache map tiles
+            urlPattern: /^https:\/\/.*basemaps\.cartocdn\.com\/.*/i,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'map-tiles',
+              expiration: {
+                maxEntries: 200,
+                maxAgeSeconds: 86400 // 1 day
+              }
+            }
+          },
+          {
+            // Cache radar tiles briefly
+            urlPattern: /^https:\/\/tilecache\.rainviewer\.com\/.*/i,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'radar-tiles',
+              expiration: {
+                maxEntries: 200,
+                maxAgeSeconds: 600 // 10 min
+              }
+            }
           }
         ]
       }
