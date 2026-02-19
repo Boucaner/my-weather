@@ -431,7 +431,7 @@ export default function App() {
 
         {/* Stats row */}
         <div style={{
-          display: 'flex', alignItems: 'center', marginTop: '28px', padding: '14px 0',
+          display: 'flex', alignItems: 'flex-start', marginTop: '28px', padding: '14px 0',
           borderTop: `1px solid ${THEME.border}`,
           borderBottom: `1px solid ${THEME.border}`,
         }}>
@@ -441,7 +441,7 @@ export default function App() {
             { label: 'Wind', value: `${windDir} ${windMph}` },
             { label: 'UV', value: `${uvMax}` },
           ].map((stat) => (
-            <div key={stat.label} style={{ flex: 1, textAlign: 'center', borderRight: `1px solid ${THEME.borderSubtle}`, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+            <div key={stat.label} style={{ flex: 1, textAlign: 'center', borderRight: `1px solid ${THEME.borderSubtle}` }}>
               <div style={{
                 fontSize: `${9 * s}px`, color: THEME.statLabel, marginBottom: '4px',
                 fontFamily: THEME.fonts.mono, letterSpacing: '1px',
@@ -450,7 +450,7 @@ export default function App() {
             </div>
           ))}
           {/* Humidity */}
-          <div style={{ flex: 1, textAlign: 'center', borderRight: `1px solid ${THEME.borderSubtle}`, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+          <div style={{ flex: 1, textAlign: 'center', borderRight: `1px solid ${THEME.borderSubtle}` }}>
             <div style={{
               fontSize: `${9 * s}px`, color: THEME.statLabel, marginBottom: '4px',
               fontFamily: THEME.fonts.mono, letterSpacing: '1px',
@@ -458,18 +458,20 @@ export default function App() {
             <div style={{ fontSize: `${15 * s}px`, fontWeight: 600, color: THEME.statValue }}>{humidity}%</div>
           </div>
           {/* Dew Point */}
-          <div style={{ flex: 1.2, textAlign: 'center', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+          <div style={{ flex: 1.2, textAlign: 'center' }}>
             <div style={{
               fontSize: `${9 * s}px`, color: THEME.statLabel, marginBottom: '4px',
               fontFamily: THEME.fonts.mono, letterSpacing: '1px',
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px',
+              position: 'relative',
             }}>
               DEW PT
               <button onClick={() => setShowDewInfo(true)} style={{
                 background: 'rgba(94,177,191,0.15)', border: '1px solid rgba(94,177,191,0.25)',
-                borderRadius: '50%', width: `${16 * s}px`, height: `${16 * s}px`,
-                color: THEME.accent, fontSize: `${9 * s}px`, fontWeight: 700, cursor: 'pointer',
+                borderRadius: '50%', width: '14px', height: '14px',
+                color: THEME.accent, fontSize: '8px', fontWeight: 700, cursor: 'pointer',
                 display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0,
+                position: 'absolute', right: '-2px', top: '-2px',
               }}>?</button>
             </div>
             <div style={{ fontSize: `${15 * s}px`, fontWeight: 600, color: THEME.statValue }}>{dewPoint}°</div>
