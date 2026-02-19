@@ -523,9 +523,6 @@ export default function App() {
         </div>
       </div>
 
-      {/* Radar */}
-      <RadarMap lat={weather.latitude} lon={weather.longitude} theme={THEME} />
-
       {/* View Toggle */}
       <div style={{
         display: 'flex', margin: '24px 28px 0', borderRadius: '10px',
@@ -568,6 +565,9 @@ export default function App() {
           ))}
         </div>
       )}
+
+      {/* Radar */}
+      <RadarMap lat={weather.latitude} lon={weather.longitude} theme={THEME} />
 
       {/* Personalization teaser */}
       <div style={{
