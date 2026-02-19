@@ -390,6 +390,9 @@ export default function App() {
               letterSpacing: '2.5px', color: THEME.accent, textTransform: 'uppercase', marginBottom: '6px',
             }}>My Weather</div>
             <div style={{ fontSize: `${15 * s}px`, color: THEME.textSecondary, fontWeight: 400 }}>{locationName}</div>
+            <div style={{ fontSize: `${11 * s}px`, color: THEME.textFaint, fontFamily: THEME.fonts.mono, marginTop: '4px' }}>
+              Updated {now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
+            </div>
           </div>
           <div style={{ textAlign: 'right' }}>
             <div style={{ display: 'flex', gap: '2px', justifyContent: 'flex-end', marginBottom: '8px' }}>
