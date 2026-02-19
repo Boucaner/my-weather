@@ -60,6 +60,12 @@ export function getDewPointLevel(dewPoint) {
   return DEW_POINT_LEVELS.find((l) => dewPoint <= l.max);
 }
 
+export function getWindDirection(degrees) {
+  const dirs = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE',
+    'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'];
+  return dirs[Math.round(degrees / 22.5) % 16];
+}
+
 // --- Short Brief ---
 export function generateShortBrief(current, hourly, daily) {
   const now = new Date();

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useWeatherData } from './useWeatherData.js';
 import {
-  getWeatherInfo, calcDewPointFromTempHumidity, getDewPointLevel,
+  getWeatherInfo, getWindDirection, calcDewPointFromTempHumidity, getDewPointLevel,
   DEW_POINT_LEVELS, generateShortBrief, generateDailySummary, generateTomorrowSummary
 } from './weatherUtils.js';
 
@@ -11,8 +11,8 @@ const THEME = {
   background: '#0a0a0f',
   textPrimary: '#e8e6e3',
   textSecondary: '#999',
-  textMuted: '#888',
-  textFaint: '#888',
+  textMuted: '#666',
+  textFaint: '#555',
   statLabel: '#888',
   statValue: '#e8e6e3',
   heroTemp: '#f0eeeb',
@@ -322,6 +322,7 @@ export default function App() {
     : calcDewPointFromTempHumidity(tempF, humidity);
   const dewLevel = getDewPointLevel(dewPoint);
   const windMph = Math.round(current.wind_speed_10m);
+  const windDir = getWindDirection(current.wind_direction_10m);
   const highF = Math.round(daily.temperature_2m_max[0]);
   const lowF = Math.round(daily.temperature_2m_min[0]);
   const uvMax = Math.round(daily.uv_index_max[0]);
@@ -436,7 +437,7 @@ export default function App() {
           {[
             { label: 'Hi', value: `${highF}°` },
             { label: 'Lo', value: `${lowF}°` },
-            { label: 'Wind', value: `${windMph}mph` },
+            { label: 'Wind', value: `${windDir} ${windMph}` },
             { label: 'UV', value: `${uvMax}` },
           ].map((stat) => (
             <div key={stat.label} style={{ flex: 1, textAlign: 'center', borderRight: `1px solid ${THEME.borderSubtle}` }}>
