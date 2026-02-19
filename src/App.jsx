@@ -168,10 +168,10 @@ function DewPointModal({ dewPoint, humidity, tempF, onClose, scale }) {
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
           <div>
-            <div style={{ fontFamily: THEME.fonts.mono, fontSize: '9px', letterSpacing: '2px', color: THEME.accent, marginBottom: '6px' }}>
+            <div style={{ fontFamily: THEME.fonts.mono, fontSize: `${9 * scale}px`, letterSpacing: '2px', color: THEME.accent, marginBottom: '6px' }}>
               UNDERSTANDING
             </div>
-            <h2 style={{ margin: 0, fontSize: '22px', fontWeight: 500, color: THEME.textPrimary }}>Dew Point</h2>
+            <h2 style={{ margin: 0, fontSize: `${22 * scale}px`, fontWeight: 500, color: THEME.textPrimary }}>Dew Point</h2>
           </div>
           <button onClick={onClose} style={{
             background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)',
@@ -180,12 +180,12 @@ function DewPointModal({ dewPoint, humidity, tempF, onClose, scale }) {
           }}>×</button>
         </div>
 
-        <p style={{ fontSize: '15px', lineHeight: 1.7, color: '#aaa', margin: '0 0 8px 0' }}>
+        <p style={{ fontSize: `${15 * scale}px`, lineHeight: 1.7, color: '#aaa', margin: '0 0 8px 0' }}>
           Dew point tells you the actual moisture content of the air. Unlike humidity,
           which changes with temperature, dew point gives you a consistent number — the
           higher it is, the more moisture is in the air and the muggier it feels.
         </p>
-        <p style={{ fontSize: '15px', lineHeight: 1.7, color: THEME.tomorrowText, margin: '0 0 20px 0' }}>
+        <p style={{ fontSize: `${15 * scale}px`, lineHeight: 1.7, color: THEME.tomorrowText, margin: '0 0 20px 0' }}>
           Think of it this way: humidity tells you the percentage of moisture the air <em>could</em> hold.
           Dew point tells you how much moisture is <em>actually there</em>.
         </p>
@@ -197,19 +197,19 @@ function DewPointModal({ dewPoint, humidity, tempF, onClose, scale }) {
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
-              <div style={{ fontSize: '12px', color: THEME.textMuted, fontFamily: THEME.fonts.mono, marginBottom: '2px' }}>RIGHT NOW</div>
-              <span style={{ fontSize: '28px', fontWeight: 300, color: THEME.textPrimary }}>{dewPoint}°</span>
-              <span style={{ fontSize: '16px', color: dewLevel.color, marginLeft: '10px', fontWeight: 500 }}>{dewLevel.label}</span>
+              <div style={{ fontSize: `${12 * scale}px`, color: THEME.textMuted, fontFamily: THEME.fonts.mono, marginBottom: '2px' }}>RIGHT NOW</div>
+              <span style={{ fontSize: `${28 * scale}px`, fontWeight: 300, color: THEME.textPrimary }}>{dewPoint}°</span>
+              <span style={{ fontSize: `${16 * scale}px`, color: dewLevel.color, marginLeft: '10px', fontWeight: 500 }}>{dewLevel.label}</span>
             </div>
-            <div style={{ textAlign: 'right', fontSize: '14px', color: THEME.textMuted }}>
+            <div style={{ textAlign: 'right', fontSize: `${14 * scale}px`, color: THEME.textMuted }}>
               <div>Humidity: {humidity}%</div>
               <div>Temp: {tempF}°F</div>
             </div>
           </div>
-          <p style={{ fontSize: '14px', lineHeight: 1.6, color: THEME.textSecondary, margin: '10px 0 0' }}>{dewLevel.desc}</p>
+          <p style={{ fontSize: `${14 * scale}px`, lineHeight: 1.6, color: THEME.textSecondary, margin: '10px 0 0' }}>{dewLevel.desc}</p>
         </div>
 
-        <div style={{ fontFamily: THEME.fonts.mono, fontSize: '10px', letterSpacing: '1.5px', color: THEME.textFaint, marginBottom: '12px' }}>
+        <div style={{ fontFamily: THEME.fonts.mono, fontSize: `${10 * scale}px`, letterSpacing: '1.5px', color: THEME.textFaint, marginBottom: '12px' }}>
           DEW POINT COMFORT SCALE
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
@@ -224,7 +224,7 @@ function DewPointModal({ dewPoint, humidity, tempF, onClose, scale }) {
                 background: isActive ? 'rgba(255,255,255,0.04)' : 'transparent',
                 border: isActive ? `1px solid ${level.color}33` : '1px solid transparent',
               }}>
-                <span style={{ fontSize: '13px', color: THEME.statLabel, fontFamily: THEME.fonts.mono }}>{rangeLabel}</span>
+                <span style={{ fontSize: `${13 * scale}px`, color: THEME.statLabel, fontFamily: THEME.fonts.mono }}>{rangeLabel}</span>
                 <div style={{ height: '8px', borderRadius: '4px', overflow: 'hidden', background: 'rgba(255,255,255,0.03)' }}>
                   <div style={{
                     height: '100%',
@@ -234,7 +234,7 @@ function DewPointModal({ dewPoint, humidity, tempF, onClose, scale }) {
                   }} />
                 </div>
                 <span style={{
-                  fontSize: '13px', color: isActive ? level.color : THEME.textMuted,
+                  fontSize: `${13 * scale}px`, color: isActive ? level.color : THEME.textMuted,
                   fontWeight: isActive ? 600 : 400, textAlign: 'right',
                 }}>
                   {level.label}{isActive && ' ← now'}
@@ -249,10 +249,10 @@ function DewPointModal({ dewPoint, humidity, tempF, onClose, scale }) {
           background: 'rgba(94,177,191,0.04)', borderRadius: '8px',
           border: '1px solid rgba(94,177,191,0.1)',
         }}>
-          <div style={{ fontSize: '14px', fontWeight: 600, color: THEME.accent, marginBottom: '6px' }}>
+          <div style={{ fontSize: `${14 * scale}px`, fontWeight: 600, color: THEME.accent, marginBottom: '6px' }}>
             💡 Quick rule of thumb
           </div>
-          <p style={{ fontSize: '14px', lineHeight: 1.6, color: THEME.textSecondary, margin: 0 }}>
+          <p style={{ fontSize: `${14 * scale}px`, lineHeight: 1.6, color: THEME.textSecondary, margin: 0 }}>
             Under 50° = comfortable · 50–60° = noticeable · Over 60° = uncomfortable.
             If the dew point is within a few degrees of the temperature, expect fog or condensation.
           </p>
