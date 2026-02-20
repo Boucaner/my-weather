@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useWeatherData } from './useWeatherData.js';
 import RadarMap from './RadarMap.jsx';
 import {
@@ -31,9 +31,9 @@ const THEME = {
 };
 
 const FONT_SIZES = {
-  small: { label: "S", scale: 0.85 },
-  medium: { label: "M", scale: 1.0 },
-  large: { label: "L", scale: 1.2 },
+  small: { label: "S", scale: 1.0 },
+  medium: { label: "M", scale: 1.2 },
+  large: { label: "L", scale: 1.45 },
 };
 
 function AlertBanner({ alerts }) {
@@ -436,6 +436,11 @@ export default function App() {
       setAiBriefLoading(false);
     }
   };
+
+  // Auto-fetch AI brief if that mode is already selected on load
+  useEffect(() => {
+    if (briefMode === 'ai' && !aiBrief && !aiBriefLoading) fetchAiBrief();
+  }, [briefMode]);
 
   // Background
   const isDay = current.is_day;
