@@ -282,6 +282,12 @@ export default function App() {
 
   const updateFontSize = (size) => { setFontSizeState(size); localStorage.setItem('mw-fontSize', size); };
   const updateBriefMode = (mode) => { setBriefModeState(mode); localStorage.setItem('mw-briefMode', mode); };
+
+  // AI Brief
+  const [aiBrief, setAiBrief] = useState(null);
+  const [aiBriefTomorrow, setAiBriefTomorrow] = useState(null);
+  const [aiBriefLoading, setAiBriefLoading] = useState(false);
+  const [aiBriefError, setAiBriefError] = useState(null);
   const now = new Date();
 
   // Loading
@@ -368,6 +374,68 @@ export default function App() {
   const summary = generateDailySummary(current, hourly, daily);
   const shortBrief = generateShortBrief(current, hourly, daily);
   const tomorrowSummary = generateTomorrowSummary(daily);
+
+  const fetchAiBrief = async () => {
+    if (aiBrief || aiBriefLoading) return; // Don't re-fetch if we already have one
+    setAiBriefLoading(true);
+    setAiBriefError(null);
+    try {
+      const hour = now.getHours();
+      const timeOfDay = hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : 'evening';
+      const sunriseStr = daily.sunrise?.[0] ? new Date(daily.sunrise[0]).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : '';
+      const sunsetStr = daily.sunset?.[0] ? new Date(daily.sunset[0]).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : '';
+
+      // Next 6 hours precip probs
+      const upcomingPrecip = hourly.time
+        .map((t, i) => ({ time: new Date(t), prob: hourly.precipitation_probability[i] }))
+        .filter(h => h.time > now && h.time < new Date(now.getTime() + 6 * 60 * 60 * 1000))
+        .map(h => `${h.time.getHours() % 12 || 12}${h.time.getHours() >= 12 ? 'pm' : 'am'}: ${h.prob}%`)
+        .join(', ');
+
+      const res = await fetch('/api/brief', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          current: {
+            temp: Math.round(current.temperature_2m),
+            feelsLike: Math.round(current.apparent_temperature),
+            conditions: getWeatherInfo(current.weather_code, current.is_day).label,
+            windDir: getWindDirection(current.wind_direction_10m),
+            windSpeed: Math.round(current.wind_speed_10m),
+            gustSpeed: Math.round(current.wind_gusts_10m),
+            humidity: current.relative_humidity_2m,
+            dewPoint: dewPoint,
+            cloudCover: current.cloud_cover,
+            uvMax: uvMax,
+          },
+          hourly: { precipProbs: upcomingPrecip },
+          daily: {
+            todayHigh: Math.round(daily.temperature_2m_max[0]),
+            todayLow: Math.round(daily.temperature_2m_min[0]),
+            todayPrecipChance: daily.precipitation_probability_max[0],
+            tomorrowConditions: daily.weather_code[1] != null ? getWeatherInfo(daily.weather_code[1], 1).label : 'Unknown',
+            tomorrowHigh: daily.temperature_2m_max[1] != null ? Math.round(daily.temperature_2m_max[1]) : '?',
+            tomorrowLow: daily.temperature_2m_min[1] != null ? Math.round(daily.temperature_2m_min[1]) : '?',
+            tomorrowPrecipChance: daily.precipitation_probability_max[1] || 0,
+            sunrise: sunriseStr,
+            sunset: sunsetStr,
+          },
+          locationName,
+          timeOfDay,
+        }),
+      });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      setAiBrief(data.brief);
+      if (data.tomorrow) setAiBriefTomorrow(data.tomorrow);
+    } catch (err) {
+      console.error('AI brief error:', err);
+      setAiBriefError('Couldn\'t generate AI brief. Using template.');
+      updateBriefMode('full');
+    } finally {
+      setAiBriefLoading(false);
+    }
+  };
 
   // Background
   const isDay = current.is_day;
@@ -636,8 +704,12 @@ export default function App() {
             {[
               { id: 'short', label: 'Quick' },
               { id: 'full', label: 'Full' },
+              { id: 'ai', label: '✨ AI' },
             ].map(opt => (
-              <button key={opt.id} onClick={() => updateBriefMode(opt.id)} style={{
+              <button key={opt.id} onClick={() => {
+                updateBriefMode(opt.id);
+                if (opt.id === 'ai') fetchAiBrief();
+              }} style={{
                 background: briefMode === opt.id ? 'rgba(94,177,191,0.15)' : 'transparent',
                 border: 'none', color: briefMode === opt.id ? THEME.accent : THEME.textFaint,
                 padding: '4px 12px', fontSize: `${10 * s}px`, fontWeight: 500, cursor: 'pointer',
@@ -648,11 +720,27 @@ export default function App() {
         </div>
         {briefMode === 'short' ? (
           <p style={{ fontSize: `${14.5 * s}px`, lineHeight: 1.75, color: THEME.briefText, margin: 0 }}>{shortBrief}</p>
+        ) : briefMode === 'ai' ? (
+          <div>
+            {aiBriefLoading && (
+              <p style={{ fontSize: `${14.5 * s}px`, lineHeight: 1.75, color: THEME.textFaint, margin: 0, fontStyle: 'italic' }}>
+                Generating your personal brief...
+              </p>
+            )}
+            {aiBriefError && (
+              <p style={{ fontSize: `${13 * s}px`, lineHeight: 1.75, color: '#e76f51', margin: 0 }}>{aiBriefError}</p>
+            )}
+            {aiBrief && !aiBriefLoading && (
+              <p style={{ fontSize: `${14.5 * s}px`, lineHeight: 1.75, color: THEME.briefText, margin: 0 }}>{aiBrief}</p>
+            )}
+          </div>
         ) : (
           <p style={{ fontSize: `${14.5 * s}px`, lineHeight: 1.75, color: THEME.briefText, margin: 0 }}>{summary}</p>
         )}
         <div style={{ marginTop: '14px', paddingTop: '14px', borderTop: `1px solid ${THEME.borderSubtle}` }}>
-          <p style={{ fontSize: `${13 * s}px`, lineHeight: 1.6, color: THEME.tomorrowText, margin: 0 }}>{tomorrowSummary}</p>
+          <p style={{ fontSize: `${13 * s}px`, lineHeight: 1.6, color: THEME.tomorrowText, margin: 0 }}>
+            {briefMode === 'ai' && aiBriefTomorrow ? aiBriefTomorrow : tomorrowSummary}
+          </p>
         </div>
       </div>
 
