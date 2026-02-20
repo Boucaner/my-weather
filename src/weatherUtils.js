@@ -217,6 +217,9 @@ export function generateDailySummary(current, hourly, daily) {
 }
 
 export function generateTomorrowSummary(daily) {
+  if (!daily.temperature_2m_max[1] || !daily.temperature_2m_min[1]) {
+    return 'Tomorrow\'s forecast is not yet available.';
+  }
   const highF = Math.round(daily.temperature_2m_max[1]);
   const lowF = Math.round(daily.temperature_2m_min[1]);
   const code = daily.weather_code[1];

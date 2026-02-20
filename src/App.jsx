@@ -36,7 +36,7 @@ const FONT_SIZES = {
   large: { label: "L", scale: 1.45 },
 };
 
-function AlertBanner({ alerts }) {
+function AlertBanner({ alerts, scale }) {
   const [expanded, setExpanded] = useState(false);
   if (!alerts || alerts.length === 0) return null;
 
@@ -63,20 +63,20 @@ function AlertBanner({ alerts }) {
           }}
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div style={{ fontSize: '13px', fontWeight: 600, color: severityColor[alert.severity] || '#f4a261' }}>
+            <div style={{ fontSize: `${13 * scale}px`, fontWeight: 600, color: severityColor[alert.severity] || '#f4a261' }}>
               ⚠️ {alert.event}
             </div>
-            <span style={{ fontSize: '11px', color: THEME.statLabel }}>{expanded === i ? '▲' : '▼'}</span>
+            <span style={{ fontSize: `${11 * scale}px`, color: THEME.statLabel }}>{expanded === i ? '▲' : '▼'}</span>
           </div>
           {expanded === i && (
             <div style={{ marginTop: '10px' }}>
               {alert.headline && alert.headline !== alert.event && (
-                <p style={{ fontSize: '13px', lineHeight: 1.6, color: '#ccc', margin: '0 0 8px 0', fontWeight: 500 }}>
+                <p style={{ fontSize: `${13 * scale}px`, lineHeight: 1.6, color: '#ccc', margin: '0 0 8px 0', fontWeight: 500 }}>
                   {alert.headline}
                 </p>
               )}
               {alert.description && (
-                <p style={{ fontSize: '12px', lineHeight: 1.6, color: '#aaa', margin: 0, whiteSpace: 'pre-wrap' }}>
+                <p style={{ fontSize: `${12 * scale}px`, lineHeight: 1.6, color: '#aaa', margin: 0, whiteSpace: 'pre-wrap' }}>
                   {alert.description}
                 </p>
               )}
@@ -298,7 +298,6 @@ export default function App() {
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         fontFamily: THEME.fonts.sans,
       }}>
-        <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@200;300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
         <div style={{ textAlign: 'center', color: THEME.statLabel }}>
           <div style={{ fontSize: '36px', marginBottom: '16px' }}>🌤️</div>
           <div style={{ fontSize: '14px', letterSpacing: '2px', fontFamily: THEME.fonts.mono }}>
@@ -318,7 +317,6 @@ export default function App() {
         fontFamily: THEME.fonts.sans, color: '#e07a5f',
         padding: '32px', textAlign: 'center',
       }}>
-        <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
         <div>
           <div style={{ fontSize: '36px', marginBottom: '16px' }}>😔</div>
           <div style={{ fontSize: '15px', marginBottom: '20px' }}>{error || 'Something went wrong.'}</div>
@@ -376,7 +374,9 @@ export default function App() {
   const tomorrowSummary = generateTomorrowSummary(daily);
 
   const fetchAiBrief = async () => {
-    if (aiBrief || aiBriefLoading) return; // Don't re-fetch if we already have one
+    if (aiBriefLoading) return;
+    setAiBrief(null);
+    setAiBriefTomorrow(null);
     setAiBriefLoading(true);
     setAiBriefError(null);
     try {
@@ -437,10 +437,14 @@ export default function App() {
     }
   };
 
-  // Auto-fetch AI brief if that mode is already selected on load
+  // Auto-fetch AI brief if that mode is already selected on initial load
+  const [aiBriefInitialFetched, setAiBriefInitialFetched] = useState(false);
   useEffect(() => {
-    if (briefMode === 'ai' && !aiBrief && !aiBriefLoading) fetchAiBrief();
-  }, [briefMode]);
+    if (briefMode === 'ai' && !aiBriefInitialFetched && !aiBriefLoading && weather) {
+      setAiBriefInitialFetched(true);
+      fetchAiBrief();
+    }
+  }, [briefMode, weather]);
 
   // Background
   const isDay = current.is_day;
@@ -461,7 +465,6 @@ export default function App() {
       maxWidth: '480px', margin: '0 auto', position: 'relative', overflow: 'hidden',
       paddingBottom: '40px',
     }}>
-      <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
 
       {/* Atmospheric glow */}
       <div style={{
@@ -692,7 +695,7 @@ export default function App() {
       </div>
 
       {/* Alerts */}
-      <AlertBanner alerts={alerts} />
+      <AlertBanner alerts={alerts} scale={s} />
 
       {/* Daily Brief */}
       <div style={{

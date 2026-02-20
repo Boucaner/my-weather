@@ -147,7 +147,14 @@ export default function RadarMap({ lat, lon, theme }) {
       const diffMin = Math.round((now - d) / 60000);
 
       if (diffMin <= 0) {
-        setFrameTime('Now');
+        const futureMin = Math.abs(diffMin);
+        if (futureMin === 0) {
+          setFrameTime('Now');
+        } else if (futureMin < 60) {
+          setFrameTime(`in ${futureMin}m`);
+        } else {
+          setFrameTime(`in ${Math.floor(futureMin / 60)}h`);
+        }
       } else if (diffMin < 60) {
         setFrameTime(`${diffMin}m ago`);
       } else {
