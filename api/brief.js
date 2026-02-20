@@ -60,6 +60,12 @@ Rules:
 - Use plain language, no jargon
 - Be concise but warm
 
+Important context for interpreting moisture:
+- USE DEW POINT, not humidity, to judge how the air feels. Humidity percentage is misleading without temperature context.
+- High humidity (90%+) at cold temps (below 50°F) is normal and NOT sticky/muggy — it just means damp, raw cold air. Don't call it "sticky."
+- Dew point below 50°F = comfortable. 50-60°F = noticeable. 60-65°F = muggy. 65-70°F = very uncomfortable. Above 70°F = dangerous, your body can't cool itself.
+- Only mention humidity/moisture if the dew point is actually high enough to affect comfort (above 55°F).
+
 Then on a new line starting with "TOMORROW:" write one sentence about tomorrow.
 
 Weather data:
