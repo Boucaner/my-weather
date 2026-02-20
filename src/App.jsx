@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useWeatherData } from './useWeatherData.js';
 import RadarMap from './RadarMap.jsx';
 import {
@@ -289,11 +289,18 @@ export default function App() {
   const [aiBriefLoading, setAiBriefLoading] = useState(false);
   const [aiBriefError, setAiBriefError] = useState(null);
   const [aiBriefInitialFetched, setAiBriefInitialFetched] = useState(false);
+  const aiBriefFetchedAt = useRef(null);
+  const AI_BRIEF_TTL = 5 * 60 * 1000; // 5 minutes
   const now = new Date();
 
   // Auto-fetch AI brief if mode is 'ai' on initial load
   useEffect(() => {
     if (briefMode !== 'ai' || aiBriefInitialFetched || aiBriefLoading || !weather) return;
+    // Skip if we already have a fresh brief
+    if (aiBrief && aiBriefFetchedAt.current && (Date.now() - aiBriefFetchedAt.current < AI_BRIEF_TTL)) {
+      setAiBriefInitialFetched(true);
+      return;
+    }
     setAiBriefInitialFetched(true);
     setAiBriefLoading(true);
     setAiBriefError(null);
@@ -326,6 +333,7 @@ export default function App() {
           dewPoint: dp,
           cloudCover: current.cloud_cover,
           uvMax: Math.round(daily.uv_index_max[0]),
+          hour: hour,
         },
         hourly: { precipProbs: upcomingPrecip },
         daily: {
@@ -348,6 +356,7 @@ export default function App() {
         if (data.error) throw new Error(data.error);
         setAiBrief(data.brief);
         if (data.tomorrow) setAiBriefTomorrow(data.tomorrow);
+        aiBriefFetchedAt.current = Date.now();
         setAiBriefLoading(false);
       })
       .catch(err => {
@@ -444,6 +453,8 @@ export default function App() {
 
   const fetchAiBrief = async () => {
     if (aiBriefLoading) return;
+    // Skip if existing brief is still fresh
+    if (aiBrief && aiBriefFetchedAt.current && (Date.now() - aiBriefFetchedAt.current < AI_BRIEF_TTL)) return;
     setAiBrief(null);
     setAiBriefTomorrow(null);
     setAiBriefLoading(true);
@@ -476,6 +487,7 @@ export default function App() {
             dewPoint: dewPoint,
             cloudCover: current.cloud_cover,
             uvMax: uvMax,
+            hour: hour,
           },
           hourly: { precipProbs: upcomingPrecip },
           daily: {
@@ -497,6 +509,7 @@ export default function App() {
       if (data.error) throw new Error(data.error);
       setAiBrief(data.brief);
       if (data.tomorrow) setAiBriefTomorrow(data.tomorrow);
+      aiBriefFetchedAt.current = Date.now();
     } catch (err) {
       console.error('AI brief error:', err);
       setAiBriefError('Couldn\'t generate AI brief. Using template.');
@@ -806,8 +819,12 @@ export default function App() {
           <p style={{ fontSize: `${14.5 * s}px`, lineHeight: 1.75, color: THEME.briefText, margin: 0 }}>{summary}</p>
         )}
         <div style={{ marginTop: '14px', paddingTop: '14px', borderTop: `1px solid ${THEME.borderSubtle}` }}>
+          <div style={{
+            fontFamily: THEME.fonts.mono, fontSize: `${9 * s}px`,
+            letterSpacing: '2px', color: THEME.textFaint, marginBottom: '6px',
+          }}>TOMORROW</div>
           <p style={{ fontSize: `${13 * s}px`, lineHeight: 1.6, color: THEME.tomorrowText, margin: 0 }}>
-            {briefMode === 'ai' && aiBriefTomorrow ? aiBriefTomorrow : tomorrowSummary}
+            {(briefMode === 'ai' && aiBriefTomorrow ? aiBriefTomorrow : tomorrowSummary).replace(/^Tomorrow:\s*/i, '')}
           </p>
         </div>
       </div>

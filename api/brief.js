@@ -15,6 +15,7 @@ export default async function handler(req, res) {
     const weatherContext = `
 Location: ${locationName}
 Time of day: ${timeOfDay}
+Current hour: ${current.hour || 'unknown'}
 Current temp: ${current.temp}°F (feels like ${current.feelsLike}°F)
 Conditions: ${current.conditions}
 Wind: ${current.windDir} ${current.windSpeed} mph, gusts ${current.gustSpeed} mph
@@ -50,10 +51,19 @@ Sunset: ${daily.sunset}
             role: 'user',
             content: `You are a friendly, conversational weather briefer for a personal weather app called "My Weather." Write a brief weather summary based on this data. 
 
+CRITICAL — Time awareness:
+- The current time of day is: ${timeOfDay} (hour: ${current.hour || 'unknown'})
+- Your brief should be about what's AHEAD, not a recap of the whole day.
+- Morning: Focus on the day ahead — what to expect going out the door.
+- Afternoon: Focus on the rest of today and this evening. Don't mention the morning.
+- Evening/night: Focus on tonight and overnight. The day is done — don't forecast it.
+- Use the "next few hours precipitation probability" data to be specific about what's coming.
+- Reference timeframes like "this afternoon," "tonight," "the next few hours" — not "today" as a whole.
+
 Rules:
 - Write 2-4 sentences for the main brief
 - Be conversational and human, like a helpful friend — not a meteorologist
-- Lead with what matters most right now (rain coming? dangerously hot? perfect day?)
+- Lead with what matters most RIGHT NOW and in the hours ahead
 - Include practical advice when relevant (umbrella, sunscreen, jacket, etc.)
 - Don't just list numbers — interpret them for the person
 - No greeting or sign-off, just the brief
@@ -66,12 +76,17 @@ Important context for interpreting moisture:
 - Dew point below 50°F = comfortable. 50-60°F = noticeable. 60-65°F = muggy. 65-70°F = very uncomfortable. Above 70°F = dangerous, your body can't cool itself.
 - Only mention humidity/moisture if the dew point is actually high enough to affect comfort (above 55°F).
 
-Then write EXACTLY the word "TOMORROW:" on its own line (this is critical for parsing), followed by one sentence about tomorrow's forecast.
+Then write EXACTLY the word "TOMORROW:" on its own line (this is critical for parsing), followed by one sentence about tomorrow's forecast. Do NOT start the tomorrow sentence with the word "Tomorrow" since the app already labels it.
 
-Example format:
-It's a crisp morning out there at 38°F, but we're heading up to a pleasant 55° this afternoon. No rain in sight — you're clear all day. A light jacket should do it.
+Example format (morning):
+It's a crisp one out there at 38°F, but we're heading up to a pleasant 55° this afternoon. No rain in sight — you're clear all day. A light jacket should do it.
 
-TOMORROW: Expect partly cloudy skies with a high near 62° — even nicer than today.
+TOMORROW: Partly cloudy with a high near 62° — even nicer than today.
+
+Example format (evening):
+Cooling down to 45° tonight under clear skies — perfect sleeping weather. No rain expected overnight, and winds are calm.
+
+TOMORROW: Mostly sunny and warmer, highs near 68°. A really nice day ahead.
 
 Weather data:
 ${weatherContext}`
