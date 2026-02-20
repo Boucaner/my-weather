@@ -69,9 +69,18 @@ function AlertBanner({ alerts }) {
             <span style={{ fontSize: '11px', color: THEME.statLabel }}>{expanded === i ? '▲' : '▼'}</span>
           </div>
           {expanded === i && (
-            <p style={{ fontSize: '12px', lineHeight: 1.6, color: '#aaa', marginTop: '10px' }}>
-              {alert.headline || alert.description?.slice(0, 300)}
-            </p>
+            <div style={{ marginTop: '10px' }}>
+              {alert.headline && alert.headline !== alert.event && (
+                <p style={{ fontSize: '13px', lineHeight: 1.6, color: '#ccc', margin: '0 0 8px 0', fontWeight: 500 }}>
+                  {alert.headline}
+                </p>
+              )}
+              {alert.description && (
+                <p style={{ fontSize: '12px', lineHeight: 1.6, color: '#aaa', margin: 0, whiteSpace: 'pre-wrap' }}>
+                  {alert.description}
+                </p>
+              )}
+            </div>
           )}
         </div>
       ))}
