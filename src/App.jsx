@@ -267,6 +267,7 @@ export default function App() {
   const [activeView, setActiveView] = useState('today');
   const [fontSize, setFontSizeState] = useState(() => localStorage.getItem('mw-fontSize') || 'medium');
   const [showDewInfo, setShowDewInfo] = useState(false);
+  const [showDetails, setShowDetails] = useState(false);
   const [briefMode, setBriefModeState] = useState(() => localStorage.getItem('mw-briefMode') || 'short');
   const s = FONT_SIZES[fontSize].scale;
 
@@ -330,6 +331,14 @@ export default function App() {
   const highF = Math.round(daily.temperature_2m_max[0]);
   const lowF = Math.round(daily.temperature_2m_min[0]);
   const uvMax = Math.round(daily.uv_index_max[0]);
+  const gustMph = Math.round(current.wind_gusts_10m);
+  const cloudCover = current.cloud_cover;
+  const pressure = current.surface_pressure ? (current.surface_pressure * 0.02953).toFixed(2) : null; // hPa to inHg
+  const precip = current.precipitation;
+  const sunrise = daily.sunrise?.[0];
+  const sunset = daily.sunset?.[0];
+  const sunriseTime = sunrise ? new Date(sunrise).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : null;
+  const sunsetTime = sunset ? new Date(sunset).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : null;
 
   // Next 24 hours
   const hourlySlice = hourly.time
@@ -486,6 +495,118 @@ export default function App() {
             </div>
           </div>
         </div>
+
+        {/* More Details Toggle */}
+        <div
+          onClick={() => setShowDetails(!showDetails)}
+          style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            gap: '6px', padding: '10px 0 2px', cursor: 'pointer',
+          }}
+        >
+          <span style={{
+            fontSize: `${11 * s}px`, color: THEME.textFaint,
+            fontFamily: THEME.fonts.mono, letterSpacing: '1px',
+          }}>
+            {showDetails ? 'LESS' : 'MORE DETAILS'}
+          </span>
+          <span style={{
+            fontSize: `${10 * s}px`, color: THEME.textFaint,
+            transition: 'transform 0.2s',
+            transform: showDetails ? 'rotate(180deg)' : 'rotate(0deg)',
+            display: 'inline-block',
+          }}>▼</span>
+        </div>
+
+        {/* Details Panel */}
+        {showDetails && (
+          <div style={{
+            display: 'grid', gridTemplateColumns: '1fr 1fr',
+            gap: '10px', padding: '14px 0 4px',
+            borderBottom: `1px solid ${THEME.border}`,
+          }}>
+            {sunriseTime && (
+              <div style={{
+                background: 'rgba(255,255,255,0.02)', borderRadius: '10px',
+                padding: '12px 14px', border: `1px solid ${THEME.borderSubtle}`,
+              }}>
+                <div style={{
+                  fontSize: `${9 * s}px`, color: THEME.statLabel,
+                  fontFamily: THEME.fonts.mono, letterSpacing: '1px', marginBottom: '6px',
+                }}>SUNRISE</div>
+                <div style={{ fontSize: `${16 * s}px`, fontWeight: 500, color: THEME.statValue }}>
+                  🌅 {sunriseTime}
+                </div>
+              </div>
+            )}
+            {sunsetTime && (
+              <div style={{
+                background: 'rgba(255,255,255,0.02)', borderRadius: '10px',
+                padding: '12px 14px', border: `1px solid ${THEME.borderSubtle}`,
+              }}>
+                <div style={{
+                  fontSize: `${9 * s}px`, color: THEME.statLabel,
+                  fontFamily: THEME.fonts.mono, letterSpacing: '1px', marginBottom: '6px',
+                }}>SUNSET</div>
+                <div style={{ fontSize: `${16 * s}px`, fontWeight: 500, color: THEME.statValue }}>
+                  🌇 {sunsetTime}
+                </div>
+              </div>
+            )}
+            <div style={{
+              background: 'rgba(255,255,255,0.02)', borderRadius: '10px',
+              padding: '12px 14px', border: `1px solid ${THEME.borderSubtle}`,
+            }}>
+              <div style={{
+                fontSize: `${9 * s}px`, color: THEME.statLabel,
+                fontFamily: THEME.fonts.mono, letterSpacing: '1px', marginBottom: '6px',
+              }}>GUSTS</div>
+              <div style={{ fontSize: `${16 * s}px`, fontWeight: 500, color: THEME.statValue }}>
+                💨 {gustMph} mph
+              </div>
+            </div>
+            <div style={{
+              background: 'rgba(255,255,255,0.02)', borderRadius: '10px',
+              padding: '12px 14px', border: `1px solid ${THEME.borderSubtle}`,
+            }}>
+              <div style={{
+                fontSize: `${9 * s}px`, color: THEME.statLabel,
+                fontFamily: THEME.fonts.mono, letterSpacing: '1px', marginBottom: '6px',
+              }}>CLOUD COVER</div>
+              <div style={{ fontSize: `${16 * s}px`, fontWeight: 500, color: THEME.statValue }}>
+                ☁️ {cloudCover != null ? `${cloudCover}%` : '—'}
+              </div>
+            </div>
+            {pressure && (
+              <div style={{
+                background: 'rgba(255,255,255,0.02)', borderRadius: '10px',
+                padding: '12px 14px', border: `1px solid ${THEME.borderSubtle}`,
+              }}>
+                <div style={{
+                  fontSize: `${9 * s}px`, color: THEME.statLabel,
+                  fontFamily: THEME.fonts.mono, letterSpacing: '1px', marginBottom: '6px',
+                }}>PRESSURE</div>
+                <div style={{ fontSize: `${16 * s}px`, fontWeight: 500, color: THEME.statValue }}>
+                  {pressure} inHg
+                </div>
+              </div>
+            )}
+            {precip != null && precip > 0 && (
+              <div style={{
+                background: 'rgba(255,255,255,0.02)', borderRadius: '10px',
+                padding: '12px 14px', border: `1px solid ${THEME.borderSubtle}`,
+              }}>
+                <div style={{
+                  fontSize: `${9 * s}px`, color: THEME.statLabel,
+                  fontFamily: THEME.fonts.mono, letterSpacing: '1px', marginBottom: '6px',
+                }}>PRECIP NOW</div>
+                <div style={{ fontSize: `${16 * s}px`, fontWeight: 500, color: THEME.statValue }}>
+                  🌧️ {precip} in
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Alerts */}

@@ -41,7 +41,8 @@ export function useWeatherData() {
           current: [
             'temperature_2m', 'relative_humidity_2m', 'apparent_temperature',
             'is_day', 'weather_code', 'wind_speed_10m', 'wind_direction_10m',
-            'wind_gusts_10m', 'dew_point_2m'
+            'wind_gusts_10m', 'dew_point_2m', 'surface_pressure',
+            'cloud_cover', 'precipitation'
           ].join(','),
           hourly: [
             'temperature_2m', 'precipitation_probability', 'weather_code',
@@ -92,23 +93,19 @@ export function useWeatherData() {
       if (!cancelled) setLoading(false);
     }
 
-    // Use geolocation
-    setLocationName(DEFAULT_NAME);
-    fetchAll(DEFAULT_LAT, DEFAULT_LON);
-
-    // if (navigator.geolocation) {
-    //   navigator.geolocation.getCurrentPosition(
-    //     (pos) => fetchAll(pos.coords.latitude, pos.coords.longitude),
-    //     () => {
-    //       setLocationName(DEFAULT_NAME);
-    //       fetchAll(DEFAULT_LAT, DEFAULT_LON);
-    //     },
-    //     { enableHighAccuracy: false, timeout: 8000, maximumAge: 300000 }
-    //   );
-    // } else {
-    //   setLocationName(DEFAULT_NAME);
-    //   fetchAll(DEFAULT_LAT, DEFAULT_LON);
-    // }
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => fetchAll(pos.coords.latitude, pos.coords.longitude),
+        () => {
+          setLocationName(DEFAULT_NAME);
+          fetchAll(DEFAULT_LAT, DEFAULT_LON);
+        },
+        { enableHighAccuracy: false, timeout: 8000, maximumAge: 300000 }
+      );
+    } else {
+      setLocationName(DEFAULT_NAME);
+      fetchAll(DEFAULT_LAT, DEFAULT_LON);
+    }
 
     return () => { cancelled = true; };
   }, []);
