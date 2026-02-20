@@ -288,7 +288,76 @@ export default function App() {
   const [aiBriefTomorrow, setAiBriefTomorrow] = useState(null);
   const [aiBriefLoading, setAiBriefLoading] = useState(false);
   const [aiBriefError, setAiBriefError] = useState(null);
+  const [aiBriefInitialFetched, setAiBriefInitialFetched] = useState(false);
   const now = new Date();
+
+  // Auto-fetch AI brief if mode is 'ai' on initial load
+  useEffect(() => {
+    if (briefMode !== 'ai' || aiBriefInitialFetched || aiBriefLoading || !weather) return;
+    setAiBriefInitialFetched(true);
+    setAiBriefLoading(true);
+    setAiBriefError(null);
+
+    const { current, hourly, daily } = weather;
+    const hour = new Date().getHours();
+    const timeOfDay = hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : 'evening';
+    const sunriseStr = daily.sunrise?.[0] ? new Date(daily.sunrise[0]).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : '';
+    const sunsetStr = daily.sunset?.[0] ? new Date(daily.sunset[0]).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : '';
+    const dp = current.dew_point_2m != null ? Math.round(current.dew_point_2m) : 0;
+    const n = new Date();
+    const upcomingPrecip = hourly.time
+      .map((t, i) => ({ time: new Date(t), prob: hourly.precipitation_probability[i] }))
+      .filter(h => h.time > n && h.time < new Date(n.getTime() + 6 * 60 * 60 * 1000))
+      .map(h => `${h.time.getHours() % 12 || 12}${h.time.getHours() >= 12 ? 'pm' : 'am'}: ${h.prob}%`)
+      .join(', ');
+
+    fetch('/api/brief', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        current: {
+          temp: Math.round(current.temperature_2m),
+          feelsLike: Math.round(current.apparent_temperature),
+          conditions: getWeatherInfo(current.weather_code, current.is_day).label,
+          windDir: getWindDirection(current.wind_direction_10m),
+          windSpeed: Math.round(current.wind_speed_10m),
+          gustSpeed: Math.round(current.wind_gusts_10m),
+          humidity: current.relative_humidity_2m,
+          dewPoint: dp,
+          cloudCover: current.cloud_cover,
+          uvMax: Math.round(daily.uv_index_max[0]),
+        },
+        hourly: { precipProbs: upcomingPrecip },
+        daily: {
+          todayHigh: Math.round(daily.temperature_2m_max[0]),
+          todayLow: Math.round(daily.temperature_2m_min[0]),
+          todayPrecipChance: daily.precipitation_probability_max[0],
+          tomorrowConditions: daily.weather_code[1] != null ? getWeatherInfo(daily.weather_code[1], 1).label : 'Unknown',
+          tomorrowHigh: daily.temperature_2m_max[1] != null ? Math.round(daily.temperature_2m_max[1]) : '?',
+          tomorrowLow: daily.temperature_2m_min[1] != null ? Math.round(daily.temperature_2m_min[1]) : '?',
+          tomorrowPrecipChance: daily.precipitation_probability_max[1] || 0,
+          sunrise: sunriseStr,
+          sunset: sunsetStr,
+        },
+        locationName,
+        timeOfDay,
+      }),
+    })
+      .then(r => r.json())
+      .then(data => {
+        if (data.error) throw new Error(data.error);
+        setAiBrief(data.brief);
+        if (data.tomorrow) setAiBriefTomorrow(data.tomorrow);
+        setAiBriefLoading(false);
+      })
+      .catch(err => {
+        console.error('AI brief error:', err);
+        setAiBriefError('Couldn\'t generate AI brief. Using template.');
+        setBriefModeState('full');
+        localStorage.setItem('mw-briefMode', 'full');
+        setAiBriefLoading(false);
+      });
+  }, [briefMode, weather, aiBriefInitialFetched]);
 
   // Loading
   if (loading) {
@@ -436,15 +505,6 @@ export default function App() {
       setAiBriefLoading(false);
     }
   };
-
-  // Auto-fetch AI brief if that mode is already selected on initial load
-  const [aiBriefInitialFetched, setAiBriefInitialFetched] = useState(false);
-  useEffect(() => {
-    if (briefMode === 'ai' && !aiBriefInitialFetched && !aiBriefLoading && weather) {
-      setAiBriefInitialFetched(true);
-      fetchAiBrief();
-    }
-  }, [briefMode, weather]);
 
   // Background
   const isDay = current.is_day;
