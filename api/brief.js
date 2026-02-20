@@ -66,7 +66,12 @@ Important context for interpreting moisture:
 - Dew point below 50°F = comfortable. 50-60°F = noticeable. 60-65°F = muggy. 65-70°F = very uncomfortable. Above 70°F = dangerous, your body can't cool itself.
 - Only mention humidity/moisture if the dew point is actually high enough to affect comfort (above 55°F).
 
-Then on a new line starting with "TOMORROW:" write one sentence about tomorrow.
+Then write EXACTLY the word "TOMORROW:" on its own line (this is critical for parsing), followed by one sentence about tomorrow's forecast.
+
+Example format:
+It's a crisp morning out there at 38°F, but we're heading up to a pleasant 55° this afternoon. No rain in sight — you're clear all day. A light jacket should do it.
+
+TOMORROW: Expect partly cloudy skies with a high near 62° — even nicer than today.
 
 Weather data:
 ${weatherContext}`
