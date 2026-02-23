@@ -271,14 +271,145 @@ function DewPointModal({ dewPoint, humidity, tempF, onClose, scale }) {
   );
 }
 
+function SettingsSheet({ show, onClose, fontSize, onFontSize, briefMode, onBriefMode, tempUnit, onTempUnit, locationName, scale }) {
+  if (!show) return null;
+  const s = scale;
+
+  const rowStyle = {
+    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+    padding: '16px 0', borderBottom: '1px solid rgba(255,255,255,0.05)',
+  };
+  const labelStyle = { fontSize: `${14 * s}px`, color: THEME.textPrimary, fontWeight: 500 };
+  const sublabelStyle = { fontSize: `${12 * s}px`, color: THEME.textMuted, marginTop: '2px' };
+
+  function SegmentedControl({ options, value, onChange }) {
+    return (
+      <div style={{ display: 'flex', borderRadius: '8px', overflow: 'hidden', border: `1px solid ${THEME.border}` }}>
+        {options.map(opt => (
+          <button key={opt.id} onClick={() => onChange(opt.id)} style={{
+            background: value === opt.id ? 'rgba(94,177,191,0.18)' : 'transparent',
+            border: 'none',
+            borderRight: `1px solid ${THEME.border}`,
+            color: value === opt.id ? THEME.accent : THEME.textFaint,
+            padding: '6px 14px', fontSize: `${11 * s}px`, fontWeight: 500,
+            cursor: 'pointer', fontFamily: THEME.fonts.mono, letterSpacing: '0.5px',
+            whiteSpace: 'nowrap',
+          }}>{opt.label}</button>
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <>
+      {/* Backdrop */}
+      <div onClick={onClose} style={{
+        position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)',
+        backdropFilter: 'blur(4px)', zIndex: 200,
+      }} />
+      {/* Sheet */}
+      <div style={{
+        position: 'fixed', bottom: 0, left: '50%', transform: 'translateX(-50%)',
+        width: '100%', maxWidth: '480px',
+        background: '#16161f', borderRadius: '20px 20px 0 0',
+        border: '1px solid rgba(255,255,255,0.08)',
+        zIndex: 201, padding: '0 24px 40px',
+        boxShadow: '0 -20px 60px rgba(0,0,0,0.6)',
+      }}>
+        {/* Handle */}
+        <div style={{ display: 'flex', justifyContent: 'center', padding: '12px 0 4px' }}>
+          <div style={{ width: '36px', height: '4px', borderRadius: '2px', background: 'rgba(255,255,255,0.15)' }} />
+        </div>
+
+        {/* Title */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0 4px' }}>
+          <div style={{ fontFamily: THEME.fonts.mono, fontSize: `${9 * s}px`, letterSpacing: '2px', color: THEME.accent }}>
+            SETTINGS
+          </div>
+          <button onClick={onClose} style={{
+            background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)',
+            borderRadius: '50%', width: '28px', height: '28px',
+            color: THEME.textMuted, fontSize: '14px', cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>×</button>
+        </div>
+
+        {/* Location */}
+        <div style={rowStyle}>
+          <div>
+            <div style={labelStyle}>Location</div>
+            <div style={sublabelStyle}>{locationName}</div>
+          </div>
+          <button onClick={onClose} style={{
+            background: 'rgba(94,177,191,0.08)', border: '1px solid rgba(94,177,191,0.2)',
+            borderRadius: '8px', padding: '6px 14px',
+            color: THEME.accent, fontSize: `${12 * s}px`, cursor: 'pointer',
+            fontFamily: THEME.fonts.mono,
+          }}>Re-detect</button>
+        </div>
+
+        {/* Temperature unit */}
+        <div style={rowStyle}>
+          <div style={labelStyle}>Temperature</div>
+          <SegmentedControl
+            options={[{ id: 'F', label: '°F' }, { id: 'C', label: '°C' }]}
+            value={tempUnit}
+            onChange={onTempUnit}
+          />
+        </div>
+
+        {/* Brief mode */}
+        <div style={rowStyle}>
+          <div>
+            <div style={labelStyle}>Daily Brief</div>
+            <div style={sublabelStyle}>Default view for briefings</div>
+          </div>
+          <SegmentedControl
+            options={[
+              { id: 'short', label: 'Quick' },
+              { id: 'full', label: 'Full' },
+              { id: 'ai', label: '✨ AI' },
+            ]}
+            value={briefMode}
+            onChange={onBriefMode}
+          />
+        </div>
+
+        {/* Font size */}
+        <div style={{ ...rowStyle, borderBottom: 'none' }}>
+          <div style={labelStyle}>Text Size</div>
+          <SegmentedControl
+            options={Object.entries(FONT_SIZES).map(([id, v]) => ({ id, label: v.label }))}
+            value={fontSize}
+            onChange={onFontSize}
+          />
+        </div>
+      </div>
+    </>
+  );
+}
+
 export default function App() {
-  const { weather, alerts, locationName, loading, error } = useWeatherData();
+  const { weather, alerts, locationName, loading, error, refetch } = useWeatherData();
   const [activeView, setActiveView] = useState('today');
   const [fontSize, setFontSizeState] = useState(() => localStorage.getItem('mw-fontSize') || 'medium');
   const [showDewInfo, setShowDewInfo] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   const [briefMode, setBriefModeState] = useState(() => localStorage.getItem('mw-briefMode') || 'short');
+  const [tempUnit, setTempUnitState] = useState(() => localStorage.getItem('mw-tempUnit') || 'F');
   const s = FONT_SIZES[fontSize].scale;
+
+  const updateTempUnit = (unit) => { setTempUnitState(unit); localStorage.setItem('mw-tempUnit', unit); };
+
+  const toDisplay = (f) => {
+    if (tempUnit === 'C') return Math.round((f - 32) * 5 / 9) + '°C';
+    return f + '°F';
+  };
+  const toDisplayShort = (f) => {
+    if (tempUnit === 'C') return Math.round((f - 32) * 5 / 9) + '°';
+    return f + '°';
+  };
 
   const updateFontSize = (size) => { setFontSizeState(size); localStorage.setItem('mw-fontSize', size); };
   const updateBriefMode = (mode) => { setBriefModeState(mode); localStorage.setItem('mw-briefMode', mode); };
@@ -562,18 +693,14 @@ export default function App() {
             </div>
           </div>
           <div style={{ textAlign: 'right' }}>
-            <div style={{ display: 'flex', gap: '2px', justifyContent: 'flex-end', marginBottom: '8px' }}>
-              {Object.entries(FONT_SIZES).map(([key, val]) => (
-                <button key={key} onClick={() => updateFontSize(key)} style={{
-                  background: fontSize === key ? 'rgba(94,177,191,0.2)' : 'rgba(255,255,255,0.04)',
-                  border: fontSize === key ? '1px solid rgba(94,177,191,0.3)' : `1px solid ${THEME.border}`,
-                  borderRadius: '4px', color: fontSize === key ? THEME.accent : THEME.textFaint,
-                  width: '26px', height: '26px', fontSize: '11px',
-                  fontFamily: THEME.fonts.mono, fontWeight: 600, cursor: 'pointer',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                }}>{val.label}</button>
-              ))}
-            </div>
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center', justifyContent: 'flex-end', marginBottom: '8px' }}>
+            <button onClick={() => setShowSettings(true)} style={{
+              background: 'rgba(255,255,255,0.04)', border: `1px solid ${THEME.border}`,
+              borderRadius: '8px', width: '32px', height: '32px',
+              color: THEME.textFaint, fontSize: '16px', cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>⚙️</button>
+          </div>
             <div style={{ fontSize: `${12 * s}px`, color: THEME.textFaint, fontFamily: THEME.fonts.mono }}>
               {now.toLocaleDateString('en-US', { weekday: 'long' })}
             </div>
@@ -589,9 +716,9 @@ export default function App() {
             <div style={{
               fontSize: `${88 * s}px`, fontWeight: 200, lineHeight: 0.85,
               letterSpacing: '-5px', color: THEME.heroTemp,
-            }}>{tempF}°</div>
+            }}>{toDisplayShort(tempF)}</div>
             <div style={{ fontSize: `${14 * s}px`, color: THEME.feelsLike, marginTop: '10px', fontWeight: 400 }}>
-              Feels like {feelsLike}°
+              Feels like {toDisplayShort(feelsLike)}
             </div>
           </div>
           <div style={{ marginTop: '6px' }}>
@@ -609,8 +736,8 @@ export default function App() {
           borderBottom: `1px solid ${THEME.border}`,
         }}>
           {[
-            { label: 'Hi', value: `${highF}°` },
-            { label: 'Lo', value: `${lowF}°` },
+            { label: 'Hi', value: `${toDisplayShort(highF)}` },
+            { label: 'Lo', value: `${toDisplayShort(lowF)}` },
             { label: 'Wind', value: `${windDir} ${windMph}` },
             { label: 'UV', value: `${uvMax}` },
           ].map((stat) => (
@@ -889,6 +1016,20 @@ export default function App() {
           Your brief will know about your commute, your kids' games, and your weekend plans.
         </div>
       </div>
+
+      {/* Settings Sheet */}
+      <SettingsSheet
+        show={showSettings}
+        onClose={() => setShowSettings(false)}
+        fontSize={fontSize}
+        onFontSize={updateFontSize}
+        briefMode={briefMode}
+        onBriefMode={(mode) => { updateBriefMode(mode); if (mode === 'ai') fetchAiBrief(); }}
+        tempUnit={tempUnit}
+        onTempUnit={updateTempUnit}
+        locationName={locationName}
+        scale={s}
+      />
 
       {/* Dew Point Modal */}
       {showDewInfo && (
