@@ -460,7 +460,7 @@ function LocationSheet({ show, onClose, activeLocation, savedLocations, onSelect
   );
 }
 
-function SettingsSheet({ show, onClose, onOpenLocations, fontSize, onFontSize, briefMode, onBriefMode, tempUnit, onTempUnit, locationName, scale }) {
+function SettingsSheet({ show, onClose, onOpenLocations, fontSize, onFontSize, briefMode, onBriefMode, briefTone, onBriefTone, tempUnit, onTempUnit, locationName, scale }) {
   if (!show) return null;
   const s = scale;
 
@@ -530,6 +530,24 @@ function SettingsSheet({ show, onClose, onOpenLocations, fontSize, onFontSize, b
             <div style={sublabelStyle}>{locationName}</div>
           </div>
           <span style={{ color: THEME.textFaint, fontSize: '16px' }}>›</span>
+        </div>
+
+        {/* Brief tone */}
+        <div style={rowStyle}>
+          <div>
+            <div style={labelStyle}>Brief Tone</div>
+            <div style={sublabelStyle}>Personality of the AI brief</div>
+          </div>
+          <SegmentedControl
+            options={[
+              { id: 'friendly', label: 'Friendly' },
+              { id: 'facts', label: 'Facts' },
+              { id: 'witty', label: 'Witty' },
+              { id: 'coach', label: 'Coach' },
+            ]}
+            value={briefTone}
+            onChange={onBriefTone}
+          />
         </div>
 
         {/* Temperature unit */}
@@ -615,6 +633,17 @@ export default function App() {
 
   const updateFontSize = (size) => { setFontSizeState(size); localStorage.setItem('mw-fontSize', size); };
   const updateBriefMode = (mode) => { setBriefModeState(mode); localStorage.setItem('mw-briefMode', mode); };
+  const [briefTone, setBriefToneState] = useState(() => localStorage.getItem('mw-briefTone') || 'friendly');
+  const updateBriefTone = (tone) => {
+    setBriefToneState(tone);
+    localStorage.setItem('mw-briefTone', tone);
+    aiBriefFetchedAt.current = null;
+    setAiBriefInitialFetched(false);
+    if (briefMode === 'ai') {
+      setAiBrief(null);
+      setAiBriefTomorrow(null);
+    }
+  };
 
   // AI Brief
   const [aiBrief, setAiBrief] = useState(null);
@@ -682,6 +711,7 @@ export default function App() {
         },
         locationName,
         timeOfDay,
+        tone: briefTone,
       }),
     })
       .then(r => r.json())
@@ -836,6 +866,7 @@ export default function App() {
           },
           locationName,
           timeOfDay,
+          tone: briefTone,
         }),
       });
       const data = await res.json();
@@ -1248,6 +1279,8 @@ export default function App() {
         onFontSize={updateFontSize}
         briefMode={briefMode}
         onBriefMode={(mode) => { updateBriefMode(mode); if (mode === 'ai') fetchAiBrief(); }}
+        briefTone={briefTone}
+        onBriefTone={updateBriefTone}
         tempUnit={tempUnit}
         onTempUnit={updateTempUnit}
         locationName={locationName}

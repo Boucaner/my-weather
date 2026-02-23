@@ -10,7 +10,15 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { current, hourly, daily, locationName, timeOfDay } = req.body;
+    const { current, hourly, daily, locationName, timeOfDay, tone } = req.body;
+
+    const toneInstructions = {
+      friendly: `Tone: Warm and conversational, like a helpful friend. Personable but not over the top.`,
+      facts: `Tone: Concise and factual. No personality, no fluff. Just the key information in plain language. Shorter is better.`,
+      witty: `Tone: Light and playful. A little dry humor or clever observation about the weather is welcome, but keep it natural — don't force it.`,
+      coach: `Tone: Motivational and energetic, like a coach giving a pre-game pep talk. Use the weather as fuel. "Crisp air = perfect conditions." Make them want to get out there.`,
+    };
+    const toneGuide = toneInstructions[tone] || toneInstructions.friendly;
 
     const weatherContext = `
 Location: ${locationName}
@@ -49,7 +57,11 @@ Sunset: ${daily.sunset}
         messages: [
           {
             role: 'user',
-            content: `You are a friendly, conversational weather briefer for a personal weather app called "My Weather." Write a brief weather summary based on this data. 
+            content: `You are a weather briefer for a personal weather app called "My Weather."
+
+${toneGuide}
+
+Write a brief weather summary based on this data. 
 
 CRITICAL — Time awareness:
 - The current time of day is: ${timeOfDay} (hour: ${current.hour || 'unknown'})
