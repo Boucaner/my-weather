@@ -5,7 +5,7 @@ const DEFAULT_LAT = 37.68;
 const DEFAULT_LON = -77.90;
 const DEFAULT_NAME = "Goochland, Virginia";
 
-export function useWeatherData() {
+export function useWeatherData(overrideLocation = null) {
   const [weather, setWeather] = useState(null);
   const [alerts, setAlerts] = useState([]);
   const [locationName, setLocationName] = useState("Locating...");
@@ -14,27 +14,33 @@ export function useWeatherData() {
 
   useEffect(() => {
     let cancelled = false;
+    setWeather(null);
+    setAlerts([]);
+    setError(null);
+    setLoading(true);
 
-    async function fetchAll(lat, lon) {
-      try {
-        // Reverse geocode
-        const geoRes = await fetch(
-          `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&zoom=10`,
-          { headers: { 'User-Agent': 'MyWeatherApp/1.0' } }
-        );
-        if (geoRes.ok) {
-          const geoData = await geoRes.json();
-          const city = geoData.address?.city || geoData.address?.town ||
-            geoData.address?.village || geoData.address?.county || "Your Location";
-          const state = geoData.address?.state || "";
-          if (!cancelled) setLocationName(state ? `${city}, ${state}` : city);
+    async function fetchAll(lat, lon, nameOverride = null) {
+      if (!nameOverride) {
+        try {
+          const geoRes = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&zoom=10`,
+            { headers: { 'User-Agent': 'MyWeatherApp/1.0' } }
+          );
+          if (geoRes.ok) {
+            const geoData = await geoRes.json();
+            const city = geoData.address?.city || geoData.address?.town ||
+              geoData.address?.village || geoData.address?.county || "Your Location";
+            const state = geoData.address?.state || "";
+            if (!cancelled) setLocationName(state ? `${city}, ${state}` : city);
+          }
+        } catch {
+          if (!cancelled) setLocationName(DEFAULT_NAME);
         }
-      } catch {
-        if (!cancelled) setLocationName(DEFAULT_NAME);
+      } else {
+        if (!cancelled) setLocationName(nameOverride);
       }
 
       try {
-        // Open-Meteo weather
         const params = new URLSearchParams({
           latitude: lat,
           longitude: lon,
@@ -67,7 +73,6 @@ export function useWeatherData() {
         if (!cancelled) setError('Could not load weather data. Pull down to retry.');
       }
 
-      // NWS alerts (US only, non-blocking)
       try {
         const alertRes = await fetch(
           `https://api.weather.gov/alerts/active?point=${lat},${lon}`,
@@ -86,11 +91,14 @@ export function useWeatherData() {
             })));
           }
         }
-      } catch {
-        // Alerts are supplementary, don't fail on this
-      }
+      } catch { }
 
       if (!cancelled) setLoading(false);
+    }
+
+    if (overrideLocation) {
+      fetchAll(overrideLocation.lat, overrideLocation.lon, overrideLocation.name);
+      return () => { cancelled = true; };
     }
 
     if (navigator.geolocation) {
@@ -108,7 +116,7 @@ export function useWeatherData() {
     }
 
     return () => { cancelled = true; };
-  }, []);
+  }, [overrideLocation?.lat, overrideLocation?.lon]);
 
   return { weather, alerts, locationName, loading, error };
 }

@@ -271,7 +271,196 @@ function DewPointModal({ dewPoint, humidity, tempF, onClose, scale }) {
   );
 }
 
-function SettingsSheet({ show, onClose, fontSize, onFontSize, briefMode, onBriefMode, tempUnit, onTempUnit, locationName, scale }) {
+function LocationSheet({ show, onClose, activeLocation, savedLocations, onSelectLocation, onSaveLocation, onDeleteLocation, scale }) {
+  const s = scale;
+  const [query, setQuery] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [searching, setSearching] = useState(false);
+  const searchTimeout = useRef(null);
+
+  useEffect(() => {
+    if (!query.trim()) { setSearchResults([]); return; }
+    clearTimeout(searchTimeout.current);
+    searchTimeout.current = setTimeout(async () => {
+      setSearching(true);
+      try {
+        const res = await fetch(
+          `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=5&addressdetails=1`,
+          { headers: { 'User-Agent': 'MyWeatherApp/1.0' } }
+        );
+        const data = await res.json();
+        setSearchResults(data.map(r => ({
+          id: r.place_id,
+          lat: parseFloat(r.lat),
+          lon: parseFloat(r.lon),
+          name: r.address?.city || r.address?.town || r.address?.village || r.address?.county || r.display_name.split(',')[0],
+          region: r.address?.state || r.address?.country || '',
+          display: r.display_name,
+        })));
+      } catch { }
+      setSearching(false);
+    }, 400);
+  }, [query]);
+
+  if (!show) return null;
+
+  const isGpsActive = !activeLocation;
+
+  return (
+    <>
+      <div onClick={onClose} style={{
+        position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)',
+        backdropFilter: 'blur(4px)', zIndex: 200,
+      }} />
+      <div style={{
+        position: 'fixed', bottom: 0, left: '50%', transform: 'translateX(-50%)',
+        width: '100%', maxWidth: '480px',
+        background: '#16161f', borderRadius: '20px 20px 0 0',
+        border: '1px solid rgba(255,255,255,0.08)',
+        zIndex: 201, padding: '0 24px 40px',
+        boxShadow: '0 -20px 60px rgba(0,0,0,0.6)',
+        maxHeight: '80vh', display: 'flex', flexDirection: 'column',
+      }}>
+        {/* Handle */}
+        <div style={{ display: 'flex', justifyContent: 'center', padding: '12px 0 4px', flexShrink: 0 }}>
+          <div style={{ width: '36px', height: '4px', borderRadius: '2px', background: 'rgba(255,255,255,0.15)' }} />
+        </div>
+
+        {/* Title */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0 16px', flexShrink: 0 }}>
+          <div style={{ fontFamily: THEME.fonts.mono, fontSize: `${9 * s}px`, letterSpacing: '2px', color: THEME.accent }}>
+            LOCATIONS
+          </div>
+          <button onClick={onClose} style={{
+            background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)',
+            borderRadius: '50%', width: '28px', height: '28px',
+            color: THEME.textMuted, fontSize: '14px', cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>×</button>
+        </div>
+
+        {/* Search */}
+        <div style={{ position: 'relative', marginBottom: '16px', flexShrink: 0 }}>
+          <input
+            type="text"
+            placeholder="Search city or zip code..."
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+            style={{
+              width: '100%', background: 'rgba(255,255,255,0.06)',
+              border: `1px solid ${THEME.border}`, borderRadius: '10px',
+              padding: '12px 16px', color: THEME.textPrimary,
+              fontSize: `${14 * s}px`, fontFamily: THEME.fonts.sans,
+              outline: 'none', boxSizing: 'border-box',
+            }}
+          />
+          {searching && (
+            <div style={{ position: 'absolute', right: '14px', top: '50%', transform: 'translateY(-50%)', color: THEME.textFaint, fontSize: '12px' }}>
+              ...
+            </div>
+          )}
+        </div>
+
+        <div style={{ overflowY: 'auto', flex: 1 }}>
+          {/* Search results */}
+          {searchResults.length > 0 && (
+            <div style={{ marginBottom: '20px' }}>
+              <div style={{ fontFamily: THEME.fonts.mono, fontSize: `${9 * s}px`, letterSpacing: '1.5px', color: THEME.textFaint, marginBottom: '8px' }}>
+                SEARCH RESULTS
+              </div>
+              {searchResults.map(r => (
+                <div key={r.id} style={{
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                  padding: '12px 0', borderBottom: `1px solid ${THEME.borderSubtle}`,
+                }}>
+                  <div>
+                    <div style={{ fontSize: `${14 * s}px`, color: THEME.textPrimary }}>{r.name}</div>
+                    <div style={{ fontSize: `${12 * s}px`, color: THEME.textMuted }}>{r.region}</div>
+                  </div>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <button onClick={() => { onSelectLocation({ lat: r.lat, lon: r.lon, name: `${r.name}${r.region ? ', ' + r.region : ''}` }); setQuery(''); setSearchResults([]); onClose(); }} style={{
+                      background: 'rgba(94,177,191,0.1)', border: '1px solid rgba(94,177,191,0.25)',
+                      borderRadius: '6px', padding: '5px 10px',
+                      color: THEME.accent, fontSize: `${11 * s}px`, cursor: 'pointer',
+                    }}>Go</button>
+                    <button onClick={() => { onSaveLocation({ lat: r.lat, lon: r.lon, name: `${r.name}${r.region ? ', ' + r.region : ''}` }); setQuery(''); setSearchResults([]); }} style={{
+                      background: 'rgba(255,255,255,0.06)', border: `1px solid ${THEME.border}`,
+                      borderRadius: '6px', padding: '5px 10px',
+                      color: THEME.textMuted, fontSize: `${11 * s}px`, cursor: 'pointer',
+                    }}>+ Save</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Saved locations */}
+          <div style={{ fontFamily: THEME.fonts.mono, fontSize: `${9 * s}px`, letterSpacing: '1.5px', color: THEME.textFaint, marginBottom: '8px' }}>
+            SAVED
+          </div>
+
+          {/* GPS / Current Location */}
+          <div
+            onClick={() => { onSelectLocation(null); onClose(); }}
+            style={{
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+              padding: '14px 12px', borderRadius: '10px', cursor: 'pointer', marginBottom: '4px',
+              background: isGpsActive ? 'rgba(94,177,191,0.08)' : 'transparent',
+              border: isGpsActive ? '1px solid rgba(94,177,191,0.2)' : '1px solid transparent',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <span style={{ fontSize: '18px' }}>📍</span>
+              <div>
+                <div style={{ fontSize: `${14 * s}px`, color: THEME.textPrimary, fontWeight: isGpsActive ? 600 : 400 }}>Current Location</div>
+                <div style={{ fontSize: `${11 * s}px`, color: THEME.textMuted }}>GPS</div>
+              </div>
+            </div>
+            {isGpsActive && <span style={{ fontSize: '16px', color: THEME.accent }}>✓</span>}
+          </div>
+
+          {savedLocations.map((loc) => {
+            const isActive = activeLocation?.lat === loc.lat && activeLocation?.lon === loc.lon;
+            return (
+              <div key={`${loc.lat}-${loc.lon}`}
+                style={{
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                  padding: '14px 12px', borderRadius: '10px', marginBottom: '4px',
+                  background: isActive ? 'rgba(94,177,191,0.08)' : 'transparent',
+                  border: isActive ? '1px solid rgba(94,177,191,0.2)' : '1px solid transparent',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer', flex: 1 }}
+                  onClick={() => { onSelectLocation(loc); onClose(); }}>
+                  <span style={{ fontSize: '18px' }}>🏙️</span>
+                  <div>
+                    <div style={{ fontSize: `${14 * s}px`, color: THEME.textPrimary, fontWeight: isActive ? 600 : 400 }}>{loc.name}</div>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  {isActive && <span style={{ fontSize: '16px', color: THEME.accent }}>✓</span>}
+                  <button onClick={(e) => { e.stopPropagation(); onDeleteLocation(loc); }} style={{
+                    background: 'transparent', border: 'none',
+                    color: THEME.textFaint, fontSize: '16px', cursor: 'pointer',
+                    padding: '4px 6px', borderRadius: '4px',
+                  }}>✕</button>
+                </div>
+              </div>
+            );
+          })}
+
+          {savedLocations.length === 0 && (
+            <div style={{ fontSize: `${13 * s}px`, color: THEME.textFaint, padding: '8px 12px' }}>
+              Search above to save locations.
+            </div>
+          )}
+        </div>
+      </div>
+    </>
+  );
+}
+
+function SettingsSheet({ show, onClose, onOpenLocations, fontSize, onFontSize, briefMode, onBriefMode, tempUnit, onTempUnit, locationName, scale }) {
   if (!show) return null;
   const s = scale;
 
@@ -335,17 +524,12 @@ function SettingsSheet({ show, onClose, fontSize, onFontSize, briefMode, onBrief
         </div>
 
         {/* Location */}
-        <div style={rowStyle}>
+        <div style={{ ...rowStyle, cursor: 'pointer' }} onClick={onOpenLocations}>
           <div>
             <div style={labelStyle}>Location</div>
             <div style={sublabelStyle}>{locationName}</div>
           </div>
-          <button onClick={onClose} style={{
-            background: 'rgba(94,177,191,0.08)', border: '1px solid rgba(94,177,191,0.2)',
-            borderRadius: '8px', padding: '6px 14px',
-            color: THEME.accent, fontSize: `${12 * s}px`, cursor: 'pointer',
-            fontFamily: THEME.fonts.mono,
-          }}>Re-detect</button>
+          <span style={{ color: THEME.textFaint, fontSize: '16px' }}>›</span>
         </div>
 
         {/* Temperature unit */}
@@ -390,7 +574,25 @@ function SettingsSheet({ show, onClose, fontSize, onFontSize, briefMode, onBrief
 }
 
 export default function App() {
-  const { weather, alerts, locationName, loading, error, refetch } = useWeatherData();
+  const [activeLocation, setActiveLocationState] = useState(() => {
+    try { const a = localStorage.getItem('mw-activeLocation'); return a ? JSON.parse(a) : null; } catch { return null; }
+  });
+  const [savedLocations, setSavedLocationsState] = useState(() => {
+    try { const s = localStorage.getItem('mw-savedLocations'); return s ? JSON.parse(s) : []; } catch { return []; }
+  });
+  const [showLocationSheet, setShowLocationSheet] = useState(false);
+
+  const updateActiveLocation = (loc) => {
+    setActiveLocationState(loc);
+    if (loc) localStorage.setItem('mw-activeLocation', JSON.stringify(loc));
+    else localStorage.removeItem('mw-activeLocation');
+  };
+  const updateSavedLocations = (locs) => {
+    setSavedLocationsState(locs);
+    localStorage.setItem('mw-savedLocations', JSON.stringify(locs));
+  };
+
+  const { weather, alerts, locationName, loading, error } = useWeatherData(activeLocation);
   const [activeView, setActiveView] = useState('today');
   const [fontSize, setFontSizeState] = useState(() => localStorage.getItem('mw-fontSize') || 'medium');
   const [showDewInfo, setShowDewInfo] = useState(false);
@@ -687,7 +889,11 @@ export default function App() {
               fontFamily: THEME.fonts.mono, fontSize: '10px',
               letterSpacing: '2.5px', color: THEME.accent, textTransform: 'uppercase', marginBottom: '6px',
             }}>My Weather</div>
-            <div style={{ fontSize: `${15 * s}px`, color: THEME.textSecondary, fontWeight: 400 }}>{locationName}</div>
+            <div style={{ fontSize: `${15 * s}px`, color: THEME.textSecondary, fontWeight: 400, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
+              onClick={() => setShowLocationSheet(true)}>
+              {locationName}
+              <span style={{ fontSize: `${10 * s}px`, color: THEME.textFaint }}>▾</span>
+            </div>
             <div style={{ fontSize: `${11 * s}px`, color: THEME.textFaint, fontFamily: THEME.fonts.mono, marginTop: '4px' }}>
               Updated {now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
             </div>
@@ -1017,10 +1223,27 @@ export default function App() {
         </div>
       </div>
 
+      {/* Location Sheet */}
+      <LocationSheet
+        show={showLocationSheet}
+        onClose={() => setShowLocationSheet(false)}
+        activeLocation={activeLocation}
+        savedLocations={savedLocations}
+        onSelectLocation={updateActiveLocation}
+        onSaveLocation={(loc) => {
+          if (!savedLocations.find(l => l.lat === loc.lat && l.lon === loc.lon)) {
+            updateSavedLocations([...savedLocations, loc]);
+          }
+        }}
+        onDeleteLocation={(loc) => updateSavedLocations(savedLocations.filter(l => !(l.lat === loc.lat && l.lon === loc.lon)))}
+        scale={s}
+      />
+
       {/* Settings Sheet */}
       <SettingsSheet
         show={showSettings}
         onClose={() => setShowSettings(false)}
+        onOpenLocations={() => { setShowSettings(false); setShowLocationSheet(true); }}
         fontSize={fontSize}
         onFontSize={updateFontSize}
         briefMode={briefMode}
