@@ -489,6 +489,19 @@ function SettingsSheet({ show, onClose, onOpenLocations, fontSize, onFontSize, b
     );
   }
 
+  const dropdownStyle = {
+    background: 'rgba(255,255,255,0.06)',
+    border: `1px solid ${THEME.border}`,
+    borderRadius: '8px',
+    color: THEME.textPrimary,
+    fontSize: `${13 * s}px`,
+    padding: '7px 12px',
+    fontFamily: THEME.fonts.sans,
+    cursor: 'pointer',
+    outline: 'none',
+    minWidth: '130px',
+  };
+
   return (
     <>
       {/* Backdrop */}
@@ -538,16 +551,12 @@ function SettingsSheet({ show, onClose, onOpenLocations, fontSize, onFontSize, b
             <div style={labelStyle}>Brief Tone</div>
             <div style={sublabelStyle}>Personality of the AI brief</div>
           </div>
-          <SegmentedControl
-            options={[
-              { id: 'friendly', label: 'Friendly' },
-              { id: 'facts', label: 'Facts' },
-              { id: 'witty', label: 'Witty' },
-              { id: 'coach', label: 'Coach' },
-            ]}
-            value={briefTone}
-            onChange={onBriefTone}
-          />
+          <select style={dropdownStyle} value={briefTone} onChange={e => onBriefTone(e.target.value)}>
+            <option value="friendly">Friendly</option>
+            <option value="facts">Just the Facts</option>
+            <option value="witty">Witty</option>
+            <option value="coach">Coach</option>
+          </select>
         </div>
 
         {/* Temperature unit */}
@@ -566,25 +575,21 @@ function SettingsSheet({ show, onClose, onOpenLocations, fontSize, onFontSize, b
             <div style={labelStyle}>Daily Brief</div>
             <div style={sublabelStyle}>Default view for briefings</div>
           </div>
-          <SegmentedControl
-            options={[
-              { id: 'short', label: 'Quick' },
-              { id: 'full', label: 'Full' },
-              { id: 'ai', label: '✨ AI' },
-            ]}
-            value={briefMode}
-            onChange={onBriefMode}
-          />
+          <select style={dropdownStyle} value={briefMode} onChange={e => onBriefMode(e.target.value)}>
+            <option value="short">Quick</option>
+            <option value="full">Full</option>
+            <option value="ai">✨ AI</option>
+          </select>
         </div>
 
         {/* Font size */}
         <div style={{ ...rowStyle, borderBottom: 'none' }}>
           <div style={labelStyle}>Text Size</div>
-          <SegmentedControl
-            options={Object.entries(FONT_SIZES).map(([id, v]) => ({ id, label: v.label }))}
-            value={fontSize}
-            onChange={onFontSize}
-          />
+          <select style={dropdownStyle} value={fontSize} onChange={e => onFontSize(e.target.value)}>
+            {Object.entries(FONT_SIZES).map(([id, v]) => (
+              <option key={id} value={id}>{v.label}</option>
+            ))}
+          </select>
         </div>
       </div>
     </>
