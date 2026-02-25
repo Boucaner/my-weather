@@ -12,6 +12,7 @@ export function useWeatherData(overrideLocation = null) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [lastFetched, setLastFetched] = useState(null);
   const refresh = () => setRefreshKey(k => k + 1);
 
   useEffect(() => {
@@ -152,7 +153,7 @@ export function useWeatherData(overrideLocation = null) {
         }
       } catch { }
 
-      if (!cancelled) setLoading(false);
+      if (!cancelled) { setLoading(false); setLastFetched(Date.now()); }
     }
 
     if (overrideLocation) {
@@ -177,5 +178,5 @@ export function useWeatherData(overrideLocation = null) {
     return () => { cancelled = true; };
   }, [overrideLocation?.lat, overrideLocation?.lon, refreshKey]);
 
-  return { weather, alerts, locationName, loading, error, refresh };
+  return { weather, alerts, locationName, loading, error, refresh, lastFetched };
 }

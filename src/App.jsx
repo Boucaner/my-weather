@@ -611,6 +611,20 @@ const shimmerStyle = `
     from { transform: rotate(0deg); }
     to   { transform: rotate(360deg); }
   }
+  .view-exit {
+    animation: viewExit 0.12s ease forwards;
+  }
+  .view-enter {
+    animation: viewEnter 0.22s ease forwards;
+  }
+  @keyframes viewExit {
+    from { opacity: 1; transform: translateY(0); }
+    to   { opacity: 0; transform: translateY(6px); }
+  }
+  @keyframes viewEnter {
+    from { opacity: 0; transform: translateY(-8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
 `;
 
 function SkeletonBox({ w = '100%', h = 16, radius = 6, style = {} }) {
@@ -721,12 +735,38 @@ export default function App() {
     localStorage.setItem('mw-savedLocations', JSON.stringify(locs));
   };
 
-  const { weather, alerts, locationName, loading, error, refresh } = useWeatherData(activeLocation);
+  const { weather, alerts, locationName, loading, error, refresh, lastFetched } = useWeatherData(activeLocation);
   const [activeView, setActiveView] = useState('today');
   const [isRefreshing, setIsRefreshing] = useState(false);
   const pullStartY = useRef(0);
   const [pullDistance, setPullDistance] = useState(0);
   const PULL_THRESHOLD = 70;
+
+  // Staleness indicator
+  const [now2, setNow2] = useState(Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNow2(Date.now()), 30000);
+    return () => clearInterval(t);
+  }, []);
+  const getStaleLabel = () => {
+    if (!lastFetched) return null;
+    const mins = Math.floor((now2 - lastFetched) / 60000);
+    if (mins < 1) return { text: 'Just updated', color: THEME.textFaint };
+    if (mins < 15) return { text: `Updated ${mins}m ago`, color: THEME.textFaint };
+    if (mins < 30) return { text: `Updated ${mins}m ago`, color: '#f4a261' };
+    return { text: `Updated ${mins}m ago — pull to refresh`, color: '#e76f51' };
+  };
+
+  // View transition key
+  const [viewTransitionClass, setViewTransitionClass] = useState('');
+  const switchView = (id) => {
+    setViewTransitionClass('view-exit');
+    setTimeout(() => {
+      setActiveView(id);
+      setViewTransitionClass('view-enter');
+      setTimeout(() => setViewTransitionClass(''), 220);
+    }, 120);
+  };
 
   const triggerRefresh = () => {
     if (isRefreshing) return;
@@ -1075,9 +1115,11 @@ export default function App() {
               {locationName}
               <span style={{ fontSize: `${10 * s}px`, color: THEME.textFaint }}>▾</span>
             </div>
-            <div style={{ fontSize: `${11 * s}px`, color: THEME.textFaint, fontFamily: THEME.fonts.mono, marginTop: '4px' }}>
-              Updated {now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
-            </div>
+            {(() => { const stale = getStaleLabel(); return stale ? (
+              <div style={{ fontSize: `${11 * s}px`, color: stale.color, fontFamily: THEME.fonts.mono, marginTop: '4px', transition: 'color 1s ease' }}>
+                {stale.text}
+              </div>
+            ) : null; })()}
           </div>
           <div style={{ textAlign: 'right' }}>
           <div style={{ display: 'flex', gap: '8px', alignItems: 'center', justifyContent: 'flex-end', marginBottom: '8px' }}>
@@ -1361,7 +1403,7 @@ export default function App() {
           { id: 'today', label: 'Hourly' },
           { id: 'week', label: '10-Day' },
         ].map(tab => (
-          <button key={tab.id} onClick={() => setActiveView(tab.id)} style={{
+          <button key={tab.id} onClick={() => switchView(tab.id)} style={{
             flex: 1, background: activeView === tab.id ? 'rgba(255,255,255,0.06)' : 'transparent',
             border: 'none', color: activeView === tab.id ? THEME.textPrimary : THEME.textFaint,
             padding: '11px 16px', fontSize: `${13 * s}px`, fontWeight: 500, cursor: 'pointer',
@@ -1372,7 +1414,7 @@ export default function App() {
 
       {/* Hourly */}
       {activeView === 'today' && (
-        <div style={{
+        <div className={viewTransitionClass} style={{
           display: 'flex', overflowX: 'auto', gap: '2px',
           padding: '16px 28px 24px', scrollbarWidth: 'none',
         }}>
@@ -1385,7 +1427,7 @@ export default function App() {
 
       {/* 10-Day */}
       {activeView === 'week' && (
-        <div style={{ padding: '12px 28px 24px' }}>
+        <div className={viewTransitionClass} style={{ padding: '12px 28px 24px' }}>
           {daily.time.map((date, i) => (
             <DayCard key={date} date={date} high={daily.temperature_2m_max[i]}
               low={daily.temperature_2m_min[i]} code={daily.weather_code[i]}
