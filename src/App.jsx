@@ -597,33 +597,6 @@ function SettingsSheet({ show, onClose, onOpenLocations, fontSize, onFontSize, b
 }
 
 
-const shimmerStyle = `
-  @keyframes shimmer {
-    0% { background-position: -600px 0; }
-    100% { background-position: 600px 0; }
-  }
-  @keyframes fadeInUp {
-    from { opacity: 0; transform: translateY(14px); }
-    to   { opacity: 1; transform: translateY(0); }
-  }
-  @keyframes spin {
-    from { transform: rotate(0deg); }
-    to   { transform: rotate(360deg); }
-  }
-`;
-
-function SkeletonBox({ w = '100%', h = 16, radius = 6, style = {} }) {
-  return (
-    <div style={{
-      width: w, height: h, borderRadius: radius,
-      background: 'linear-gradient(90deg, rgba(255,255,255,0.04) 25%, rgba(255,255,255,0.09) 50%, rgba(255,255,255,0.04) 75%)',
-      backgroundSize: '600px 100%',
-      animation: 'shimmer 1.6s infinite linear',
-      ...style,
-    }} />
-  );
-}
-
 
 const shimmerStyle = `
   @keyframes shimmer {
