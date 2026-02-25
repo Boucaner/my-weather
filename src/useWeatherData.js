@@ -99,11 +99,14 @@ export function useWeatherData(overrideLocation = null) {
                 if (obsRes.ok) {
                   const obsData = await obsRes.json();
                   const obs = obsData.properties;
-                  const msToMph = 2.23694;
-                  const windSpeedMph = obs.windSpeed?.value != null
-                    ? Math.round(obs.windSpeed.value * msToMph) : null;
-                  const windGustMph = obs.windGust?.value != null
-                    ? Math.round(obs.windGust.value * msToMph) : null;
+                  const toMph = (val, unitCode) => {
+                    if (val == null) return null;
+                    if (unitCode?.includes('km_h') || unitCode?.includes('km/h')) return Math.round(val * 0.621371);
+                    if (unitCode?.includes('mph') || unitCode?.includes('mi_h')) return Math.round(val);
+                    return Math.round(val * 2.23694); // assume m/s
+                  };
+                  const windSpeedMph = toMph(obs.windSpeed?.value, obs.windSpeed?.unitCode);
+                  const windGustMph = toMph(obs.windGust?.value, obs.windGust?.unitCode);
                   const windDirDeg = obs.windDirection?.value ?? null;
                   // Merge observed wind into Open-Meteo current data
                   if (!cancelled && windSpeedMph != null) {
