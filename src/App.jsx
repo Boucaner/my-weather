@@ -792,7 +792,7 @@ export default function App() {
   const uvMax = Math.round(daily.uv_index_max[0]);
   const gustMph = Math.round(current.wind_gusts_10m);
   const cloudCover = current.cloud_cover;
-  const pressure = current.surface_pressure ? Math.round(current.surface_pressure) : null; // hPa = millibars
+  const pressure = current.surface_pressure ? Math.round(current.surface_pressure) : null; // hPa = mb
   const precip = current.precipitation;
   const sunrise = daily.sunrise?.[0];
   const sunset = daily.sunset?.[0];
@@ -1114,7 +1114,7 @@ export default function App() {
                   fontFamily: THEME.fonts.mono, letterSpacing: '1px', marginBottom: '6px',
                 }}>PRESSURE</div>
                 <div style={{ fontSize: `${16 * s}px`, fontWeight: 500, color: THEME.statValue }}>
-                  {pressure} mb
+                  {pressure} mb · {(pressure * 0.02953).toFixed(2)} inHg · {(pressure * 0.02953).toFixed(2)} inHg · {(pressure * 0.02953).toFixed(2)} inHg
                 </div>
               </div>
             )}
