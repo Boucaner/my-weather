@@ -1114,7 +1114,7 @@ export default function App() {
                   fontFamily: THEME.fonts.mono, letterSpacing: '1px', marginBottom: '6px',
                 }}>PRESSURE</div>
                 <div style={{ fontSize: `${16 * s}px`, fontWeight: 500, color: THEME.statValue }}>
-                  {pressure} mb · {(pressure * 0.02953).toFixed(2)} inHg · {(pressure * 0.02953).toFixed(2)} inHg · {(pressure * 0.02953).toFixed(2)} inHg
+                  {pressure} mb
                 </div>
               </div>
             )}
