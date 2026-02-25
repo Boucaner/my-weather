@@ -11,6 +11,8 @@ export function useWeatherData(overrideLocation = null) {
   const [locationName, setLocationName] = useState("Locating...");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const refresh = () => setRefreshKey(k => k + 1);
 
   useEffect(() => {
     let cancelled = false;
@@ -73,6 +75,60 @@ export function useWeatherData(overrideLocation = null) {
         if (!cancelled) setError('Could not load weather data. Pull down to retry.');
       }
 
+      // NWS observed wind — real station data, more accurate than model interpolation
+      try {
+        const pointsRes = await fetch(
+          `https://api.weather.gov/points/${lat.toFixed(4)},${lon.toFixed(4)}`,
+          { headers: { 'User-Agent': 'MyWeatherApp/1.0', 'Accept': 'application/geo+json' } }
+        );
+        if (pointsRes.ok) {
+          const pointsData = await pointsRes.json();
+          const stationsUrl = pointsData.properties?.observationStations;
+          if (stationsUrl) {
+            const stationsRes = await fetch(stationsUrl, {
+              headers: { 'User-Agent': 'MyWeatherApp/1.0', 'Accept': 'application/geo+json' }
+            });
+            if (stationsRes.ok) {
+              const stationsData = await stationsRes.json();
+              const firstStation = stationsData.features?.[0]?.properties?.stationIdentifier;
+              if (firstStation) {
+                const obsRes = await fetch(
+                  `https://api.weather.gov/stations/${firstStation}/observations/latest`,
+                  { headers: { 'User-Agent': 'MyWeatherApp/1.0', 'Accept': 'application/geo+json' } }
+                );
+                if (obsRes.ok) {
+                  const obsData = await obsRes.json();
+                  const obs = obsData.properties;
+                  const msToMph = 2.23694;
+                  const windSpeedMph = obs.windSpeed?.value != null
+                    ? Math.round(obs.windSpeed.value * msToMph) : null;
+                  const windGustMph = obs.windGust?.value != null
+                    ? Math.round(obs.windGust.value * msToMph) : null;
+                  const windDirDeg = obs.windDirection?.value ?? null;
+                  // Merge observed wind into Open-Meteo current data
+                  if (!cancelled && windSpeedMph != null) {
+                    setWeather(prev => {
+                      if (!prev) return prev;
+                      return {
+                        ...prev,
+                        current: {
+                          ...prev.current,
+                          wind_speed_10m: windSpeedMph,
+                          wind_gusts_10m: windGustMph ?? prev.current.wind_gusts_10m,
+                          wind_direction_10m: windDirDeg ?? prev.current.wind_direction_10m,
+                          _windSource: firstStation,
+                        }
+                      };
+                    });
+                  }
+                }
+              }
+            }
+          }
+        }
+      } catch { /* silently fall back to Open-Meteo wind */ }
+
+      // NWS alerts
       try {
         const alertRes = await fetch(
           `https://api.weather.gov/alerts/active?point=${lat},${lon}`,
@@ -116,7 +172,7 @@ export function useWeatherData(overrideLocation = null) {
     }
 
     return () => { cancelled = true; };
-  }, [overrideLocation?.lat, overrideLocation?.lon]);
+  }, [overrideLocation?.lat, overrideLocation?.lon, refreshKey]);
 
-  return { weather, alerts, locationName, loading, error };
+  return { weather, alerts, locationName, loading, error, refresh };
 }

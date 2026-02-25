@@ -596,6 +596,139 @@ function SettingsSheet({ show, onClose, onOpenLocations, fontSize, onFontSize, b
   );
 }
 
+
+const shimmerStyle = `
+  @keyframes shimmer {
+    0% { background-position: -600px 0; }
+    100% { background-position: 600px 0; }
+  }
+  @keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(14px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
+  }
+`;
+
+function SkeletonBox({ w = '100%', h = 16, radius = 6, style = {} }) {
+  return (
+    <div style={{
+      width: w, height: h, borderRadius: radius,
+      background: 'linear-gradient(90deg, rgba(255,255,255,0.04) 25%, rgba(255,255,255,0.09) 50%, rgba(255,255,255,0.04) 75%)',
+      backgroundSize: '600px 100%',
+      animation: 'shimmer 1.6s infinite linear',
+      ...style,
+    }} />
+  );
+}
+
+
+const shimmerStyle = `
+  @keyframes shimmer {
+    0% { background-position: -600px 0; }
+    100% { background-position: 600px 0; }
+  }
+  @keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(14px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
+  }
+`;
+
+function SkeletonBox({ w = '100%', h = 16, radius = 6, style = {} }) {
+  return (
+    <div style={{
+      width: w, height: h, borderRadius: radius,
+      background: 'linear-gradient(90deg, rgba(255,255,255,0.04) 25%, rgba(255,255,255,0.09) 50%, rgba(255,255,255,0.04) 75%)',
+      backgroundSize: '600px 100%',
+      animation: 'shimmer 1.6s infinite linear',
+      ...style,
+    }} />
+  );
+}
+
+function LoadingSkeleton() {
+  return (
+    <div style={{
+      minHeight: '100vh', background: THEME.background,
+      fontFamily: THEME.fonts.sans, maxWidth: '480px', margin: '0 auto',
+      paddingBottom: '40px', overflow: 'hidden',
+    }}>
+      <style>{shimmerStyle}</style>
+      {/* Header */}
+      <div style={{ padding: '48px 28px 0' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '36px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <SkeletonBox w={80} h={10} />
+            <SkeletonBox w={140} h={14} />
+            <SkeletonBox w={90} h={10} />
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'flex-end' }}>
+            <SkeletonBox w={32} h={32} radius={8} />
+            <SkeletonBox w={80} h={10} />
+            <SkeletonBox w={60} h={10} />
+          </div>
+        </div>
+        {/* Hero temp */}
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '20px', marginBottom: '28px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <SkeletonBox w={160} h={80} radius={8} />
+            <SkeletonBox w={100} h={14} />
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '6px' }}>
+            <SkeletonBox w={60} h={52} radius={8} />
+            <SkeletonBox w={80} h={13} />
+          </div>
+        </div>
+        {/* Stats row */}
+        <div style={{ display: 'flex', gap: '8px', paddingTop: '14px', borderTop: `1px solid ${THEME.border}`, borderBottom: `1px solid ${THEME.border}`, paddingBottom: '14px', marginBottom: '10px' }}>
+          {[1,2,3,4,5,6].map(i => (
+            <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}>
+              <SkeletonBox w="70%" h={9} />
+              <SkeletonBox w="80%" h={15} />
+            </div>
+          ))}
+        </div>
+      </div>
+      {/* Brief card */}
+      <div style={{ margin: '24px 28px 0', padding: '20px 22px', background: THEME.cardBg, borderRadius: '14px', border: `1px solid rgba(255,255,255,0.05)` }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '14px' }}>
+          <SkeletonBox w={100} h={10} />
+          <SkeletonBox w={120} h={24} radius={6} />
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <SkeletonBox w="100%" h={13} />
+          <SkeletonBox w="92%" h={13} />
+          <SkeletonBox w="80%" h={13} />
+        </div>
+        <div style={{ marginTop: '14px', paddingTop: '14px', borderTop: `1px solid ${THEME.borderSubtle}`, display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <SkeletonBox w={80} h={9} />
+          <SkeletonBox w="85%" h={13} />
+        </div>
+      </div>
+      {/* Forecast toggle */}
+      <div style={{ margin: '24px 28px 0' }}>
+        <SkeletonBox w="100%" h={42} radius={10} />
+      </div>
+      {/* Hourly cards */}
+      <div style={{ display: 'flex', gap: '8px', padding: '16px 28px', overflow: 'hidden' }}>
+        {[1,2,3,4,5,6].map(i => (
+          <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', minWidth: '58px' }}>
+            <SkeletonBox w={40} h={10} />
+            <SkeletonBox w={36} h={28} radius={6} />
+            <SkeletonBox w={36} h={15} />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   const [activeLocation, setActiveLocationState] = useState(() => {
     try { const a = localStorage.getItem('mw-activeLocation'); return a ? JSON.parse(a) : null; } catch { return null; }
@@ -615,8 +748,33 @@ export default function App() {
     localStorage.setItem('mw-savedLocations', JSON.stringify(locs));
   };
 
-  const { weather, alerts, locationName, loading, error } = useWeatherData(activeLocation);
+  const { weather, alerts, locationName, loading, error, refresh } = useWeatherData(activeLocation);
   const [activeView, setActiveView] = useState('today');
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const pullStartY = useRef(0);
+  const [pullDistance, setPullDistance] = useState(0);
+  const PULL_THRESHOLD = 70;
+
+  const triggerRefresh = () => {
+    if (isRefreshing) return;
+    setIsRefreshing(true);
+    refresh();
+    setTimeout(() => setIsRefreshing(false), 1200);
+  };
+
+  const handleTouchStart = (e) => {
+    if (window.scrollY === 0) pullStartY.current = e.touches[0].clientY;
+  };
+  const handleTouchMove = (e) => {
+    if (pullStartY.current === 0) return;
+    const dist = Math.max(0, Math.min(e.touches[0].clientY - pullStartY.current, 100));
+    if (dist > 0 && window.scrollY === 0) setPullDistance(dist);
+  };
+  const handleTouchEnd = () => {
+    if (pullDistance >= PULL_THRESHOLD) triggerRefresh();
+    setPullDistance(0);
+    pullStartY.current = 0;
+  };
   const [fontSize, setFontSizeState] = useState(() => localStorage.getItem('mw-fontSize') || 'medium');
   const [showDewInfo, setShowDewInfo] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
@@ -737,21 +895,8 @@ export default function App() {
   }, [briefMode, weather, aiBriefInitialFetched]);
 
   // Loading
-  if (loading) {
-    return (
-      <div style={{
-        minHeight: '100vh', background: THEME.background,
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        fontFamily: THEME.fonts.sans,
-      }}>
-        <div style={{ textAlign: 'center', color: THEME.statLabel }}>
-          <div style={{ fontSize: '36px', marginBottom: '16px' }}>🌤️</div>
-          <div style={{ fontSize: '14px', letterSpacing: '2px', fontFamily: THEME.fonts.mono }}>
-            FETCHING YOUR WEATHER...
-          </div>
-        </div>
-      </div>
-    );
+  if (loading && !weather) {
+    return <LoadingSkeleton />;
   }
 
   // Error
@@ -901,12 +1046,39 @@ export default function App() {
   else if (isRainy) bgGradient = 'linear-gradient(180deg, #1a1e2a 0%, #0a0b10 40%)';
 
   return (
-    <div style={{
-      minHeight: '100vh', background: bgGradient, color: THEME.textPrimary,
-      fontFamily: THEME.fonts.sans,
-      maxWidth: '480px', margin: '0 auto', position: 'relative', overflow: 'hidden',
-      paddingBottom: '40px',
-    }}>
+    <div
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+      style={{
+        minHeight: '100vh', background: bgGradient, color: THEME.textPrimary,
+        fontFamily: THEME.fonts.sans,
+        maxWidth: '480px', margin: '0 auto', position: 'relative', overflow: 'hidden',
+        paddingBottom: '40px',
+      }}>
+      <style>{shimmerStyle}</style>
+
+      {/* Pull-to-refresh indicator */}
+      <div style={{
+        position: 'absolute', top: 0, left: 0, right: 0, zIndex: 50,
+        display: 'flex', justifyContent: 'center', alignItems: 'flex-end',
+        height: `${Math.min(pullDistance * 0.6, 52)}px`,
+        overflow: 'hidden', pointerEvents: 'none',
+        transition: pullDistance === 0 ? 'height 0.3s ease' : 'none',
+      }}>
+        {(pullDistance > 10 || isRefreshing) && (
+          <div style={{
+            width: '32px', height: '32px', borderRadius: '50%',
+            background: 'rgba(94,177,191,0.12)', border: '1px solid rgba(94,177,191,0.3)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            marginBottom: '8px',
+            animation: isRefreshing ? 'spin 0.8s linear infinite' : 'none',
+            opacity: isRefreshing ? 1 : Math.min(pullDistance / PULL_THRESHOLD, 1),
+          }}>
+            <span style={{ fontSize: '14px', display: 'block', color: THEME.accent }}>↻</span>
+          </div>
+        )}
+      </div>
 
       {/* Atmospheric glow */}
       <div style={{
@@ -918,7 +1090,7 @@ export default function App() {
       }} />
 
       {/* Header */}
-      <div style={{ padding: '48px 28px 0', position: 'relative' }}>
+      <div style={{ padding: '48px 28px 0', position: 'relative', animation: 'fadeInUp 0.4s ease both' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <div>
             <div style={{
@@ -936,6 +1108,13 @@ export default function App() {
           </div>
           <div style={{ textAlign: 'right' }}>
           <div style={{ display: 'flex', gap: '8px', alignItems: 'center', justifyContent: 'flex-end', marginBottom: '8px' }}>
+            <button onClick={triggerRefresh} style={{
+              background: 'rgba(255,255,255,0.04)', border: `1px solid ${THEME.border}`,
+              borderRadius: '8px', width: '32px', height: '32px',
+              color: THEME.textFaint, fontSize: '16px', cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              animation: isRefreshing ? 'spin 0.8s linear infinite' : 'none',
+            }}>↻</button>
             <button onClick={() => setShowSettings(true)} style={{
               background: 'rgba(255,255,255,0.04)', border: `1px solid ${THEME.border}`,
               borderRadius: '8px', width: '32px', height: '32px',
@@ -1144,6 +1323,7 @@ export default function App() {
         margin: '24px 28px 0', padding: '20px 22px',
         background: THEME.cardBg, borderRadius: '14px',
         border: `1px solid rgba(255,255,255,0.05)`,
+        animation: 'fadeInUp 0.4s 0.1s ease both',
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
           <div style={{
@@ -1202,6 +1382,7 @@ export default function App() {
       <div style={{
         display: 'flex', margin: '24px 28px 0', borderRadius: '10px',
         overflow: 'hidden', border: `1px solid ${THEME.border}`,
+        animation: 'fadeInUp 0.4s 0.2s ease both',
       }}>
         {[
           { id: 'today', label: 'Hourly' },
