@@ -460,7 +460,174 @@ function LocationSheet({ show, onClose, activeLocation, savedLocations, onSelect
   );
 }
 
-function SettingsSheet({ show, onClose, onOpenLocations, fontSize, onFontSize, briefMode, onBriefMode, briefTone, onBriefTone, tempUnit, onTempUnit, locationName, scale }) {
+const ACTIVITY_OPTIONS = [
+  { id: 'running',     label: 'Running',          icon: '🏃' },
+  { id: 'cycling',     label: 'Cycling',          icon: '🚴' },
+  { id: 'commute_car', label: 'Car Commute',       icon: '🚗' },
+  { id: 'commute_transit', label: 'Transit',       icon: '🚌' },
+  { id: 'kids_sports', label: "Kids' Sports",      icon: '⚽' },
+  { id: 'gardening',   label: 'Gardening',         icon: '🌱' },
+  { id: 'golf',        label: 'Golf',              icon: '⛳' },
+  { id: 'hiking',      label: 'Hiking',            icon: '🥾' },
+  { id: 'outdoor_work',label: 'Outdoor Work',      icon: '🔨' },
+  { id: 'motorcycling',label: 'Motorcycling',       icon: '🏍️' },
+  { id: 'fishing',     label: 'Fishing',           icon: '🎣' },
+  { id: 'dog_walks',   label: 'Dog Walks',         icon: '🐕' },
+];
+
+function ProfileSheet({ show, onClose, profile, onSave, scale }) {
+  const s = scale;
+  const [name, setName] = useState(profile.name || '');
+  const [activities, setActivities] = useState(profile.activities || []);
+
+  // Sync if profile changes externally
+  useEffect(() => {
+    setName(profile.name || '');
+    setActivities(profile.activities || []);
+  }, [profile.name, profile.activities]);
+
+  const toggleActivity = (id) => {
+    setActivities(prev =>
+      prev.includes(id) ? prev.filter(a => a !== id) : [...prev, id]
+    );
+  };
+
+  const handleSave = () => {
+    onSave({ name: name.trim(), activities });
+    onClose();
+  };
+
+  if (!show) return null;
+
+  return (
+    <>
+      <div onClick={onClose} style={{
+        position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)',
+        backdropFilter: 'blur(4px)', zIndex: 200,
+      }} />
+      <div style={{
+        position: 'fixed', bottom: 0, left: '50%', transform: 'translateX(-50%)',
+        width: '100%', maxWidth: '480px',
+        background: '#16161f', borderRadius: '20px 20px 0 0',
+        border: '1px solid rgba(255,255,255,0.08)',
+        zIndex: 201, padding: '0 24px 40px',
+        boxShadow: '0 -20px 60px rgba(0,0,0,0.6)',
+        maxHeight: '85vh', display: 'flex', flexDirection: 'column',
+      }}>
+        {/* Handle */}
+        <div style={{ display: 'flex', justifyContent: 'center', padding: '12px 0 4px', flexShrink: 0 }}>
+          <div style={{ width: '36px', height: '4px', borderRadius: '2px', background: 'rgba(255,255,255,0.15)' }} />
+        </div>
+
+        {/* Title */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0 20px', flexShrink: 0 }}>
+          <div>
+            <div style={{ fontFamily: THEME.fonts.mono, fontSize: `${9 * s}px`, letterSpacing: '2px', color: THEME.accent, marginBottom: '4px' }}>
+              YOUR PROFILE
+            </div>
+            <div style={{ fontSize: `${12 * s}px`, color: THEME.textMuted }}>
+              Personalizes your AI brief
+            </div>
+          </div>
+          <button onClick={onClose} style={{
+            background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)',
+            borderRadius: '50%', width: '28px', height: '28px',
+            color: THEME.textMuted, fontSize: '14px', cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>×</button>
+        </div>
+
+        <div style={{ overflowY: 'auto', flex: 1 }}>
+          {/* Name */}
+          <div style={{ marginBottom: '28px' }}>
+            <div style={{
+              fontFamily: THEME.fonts.mono, fontSize: `${9 * s}px`,
+              letterSpacing: '1.5px', color: THEME.textFaint, marginBottom: '10px',
+            }}>FIRST NAME</div>
+            <input
+              type="text"
+              placeholder="What should we call you?"
+              value={name}
+              onChange={e => setName(e.target.value)}
+              style={{
+                width: '100%', background: 'rgba(255,255,255,0.06)',
+                border: `1px solid ${THEME.border}`, borderRadius: '10px',
+                padding: '12px 16px', color: THEME.textPrimary,
+                fontSize: `${14 * s}px`, fontFamily: THEME.fonts.sans,
+                outline: 'none', boxSizing: 'border-box',
+              }}
+            />
+          </div>
+
+          {/* Activities */}
+          <div style={{ marginBottom: '28px' }}>
+            <div style={{
+              fontFamily: THEME.fonts.mono, fontSize: `${9 * s}px`,
+              letterSpacing: '1.5px', color: THEME.textFaint, marginBottom: '6px',
+            }}>YOUR ACTIVITIES</div>
+            <div style={{ fontSize: `${12 * s}px`, color: THEME.textMuted, marginBottom: '14px' }}>
+              Select anything weather affects for you
+            </div>
+            <div style={{
+              display: 'grid', gridTemplateColumns: '1fr 1fr',
+              gap: '8px',
+            }}>
+              {ACTIVITY_OPTIONS.map(opt => {
+                const active = activities.includes(opt.id);
+                return (
+                  <button key={opt.id} onClick={() => toggleActivity(opt.id)} style={{
+                    display: 'flex', alignItems: 'center', gap: '10px',
+                    padding: '12px 14px', borderRadius: '10px', cursor: 'pointer',
+                    background: active ? 'rgba(94,177,191,0.1)' : 'rgba(255,255,255,0.03)',
+                    border: active ? '1px solid rgba(94,177,191,0.3)' : `1px solid ${THEME.border}`,
+                    color: active ? THEME.accent : THEME.textSecondary,
+                    fontSize: `${13 * s}px`, fontFamily: THEME.fonts.sans,
+                    textAlign: 'left', transition: 'all 0.15s ease',
+                  }}>
+                    <span style={{ fontSize: '18px' }}>{opt.icon}</span>
+                    <span style={{ fontWeight: active ? 600 : 400 }}>{opt.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* How it's used */}
+          <div style={{
+            padding: '14px 16px', marginBottom: '20px',
+            background: 'rgba(94,177,191,0.04)', borderRadius: '8px',
+            border: '1px solid rgba(94,177,191,0.1)',
+          }}>
+            <div style={{ fontSize: `${12 * s}px`, color: THEME.accent, fontWeight: 600, marginBottom: '4px' }}>
+              💡 How this is used
+            </div>
+            <p style={{ fontSize: `${12 * s}px`, lineHeight: 1.6, color: THEME.textMuted, margin: 0 }}>
+              Your name and activities are sent to the AI brief so it can give you relevant, 
+              personalized advice — like flagging a bad hair day for a cyclist or reminding a 
+              runner that 95°F + 70° dew point is dangerous.
+            </p>
+          </div>
+        </div>
+
+        {/* Save button */}
+        <div style={{ flexShrink: 0, paddingTop: '16px' }}>
+          <button onClick={handleSave} style={{
+            width: '100%', padding: '14px',
+            background: 'rgba(94,177,191,0.15)',
+            border: '1px solid rgba(94,177,191,0.3)',
+            borderRadius: '12px', color: THEME.accent,
+            fontSize: `${14 * s}px`, fontWeight: 600,
+            cursor: 'pointer', fontFamily: THEME.fonts.sans,
+          }}>
+            Save Profile
+          </button>
+        </div>
+      </div>
+    </>
+  );
+}
+
+function SettingsSheet({ show, onClose, onOpenLocations, onOpenProfile, profile, fontSize, onFontSize, briefMode, onBriefMode, briefTone, onBriefTone, tempUnit, onTempUnit, locationName, scale }) {
   if (!show) return null;
   const s = scale;
 
@@ -534,6 +701,19 @@ function SettingsSheet({ show, onClose, onOpenLocations, fontSize, onFontSize, b
             color: THEME.textMuted, fontSize: '14px', cursor: 'pointer',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}>×</button>
+        </div>
+
+        {/* Profile */}
+        <div style={{ ...rowStyle, cursor: 'pointer' }} onClick={onOpenProfile}>
+          <div>
+            <div style={labelStyle}>Your Profile</div>
+            <div style={sublabelStyle}>
+              {profile?.name
+                ? `${profile.name}${profile.activities?.length ? ` · ${profile.activities.length} activit${profile.activities.length === 1 ? 'y' : 'ies'}` : ''}`
+                : 'Name & activity preferences'}
+            </div>
+          </div>
+          <span style={{ color: THEME.textFaint, fontSize: '16px' }}>›</span>
         </div>
 
         {/* Location */}
@@ -724,6 +904,10 @@ export default function App() {
     try { const s = localStorage.getItem('mw-savedLocations'); return s ? JSON.parse(s) : []; } catch { return []; }
   });
   const [showLocationSheet, setShowLocationSheet] = useState(false);
+  const [profile, setProfileState] = useState(() => {
+    try { const p = localStorage.getItem('mw-profile'); return p ? JSON.parse(p) : { name: '', activities: [] }; } catch { return { name: '', activities: [] }; }
+  });
+  const [showProfile, setShowProfile] = useState(false);
 
   const updateActiveLocation = (loc) => {
     setActiveLocationState(loc);
@@ -831,6 +1015,16 @@ export default function App() {
   const AI_BRIEF_TTL = 5 * 60 * 1000; // 5 minutes
   const now = new Date();
 
+  const updateProfile = (p) => {
+    setProfileState(p);
+    localStorage.setItem('mw-profile', JSON.stringify(p));
+    // Invalidate AI brief so it regenerates with new profile
+    aiBriefFetchedAt.current = null;
+    setAiBriefInitialFetched(false);
+    setAiBrief(null);
+    setAiBriefTomorrow(null);
+  };
+
   // Auto-fetch AI brief if mode is 'ai' on initial load
   useEffect(() => {
     if (briefMode !== 'ai' || aiBriefInitialFetched || aiBriefLoading || !weather) return;
@@ -888,6 +1082,7 @@ export default function App() {
         locationName,
         timeOfDay,
         tone: briefTone,
+        profile,
       }),
     })
       .then(r => r.json())
@@ -1030,6 +1225,7 @@ export default function App() {
           locationName,
           timeOfDay,
           tone: briefTone,
+          profile,
         }),
       });
       const data = await res.json();
@@ -1476,6 +1672,8 @@ export default function App() {
         show={showSettings}
         onClose={() => setShowSettings(false)}
         onOpenLocations={() => { setShowSettings(false); setShowLocationSheet(true); }}
+        onOpenProfile={() => { setShowSettings(false); setShowProfile(true); }}
+        profile={profile}
         fontSize={fontSize}
         onFontSize={updateFontSize}
         briefMode={briefMode}
@@ -1485,6 +1683,15 @@ export default function App() {
         tempUnit={tempUnit}
         onTempUnit={updateTempUnit}
         locationName={locationName}
+        scale={s}
+      />
+
+      {/* Profile Sheet */}
+      <ProfileSheet
+        show={showProfile}
+        onClose={() => setShowProfile(false)}
+        profile={profile}
+        onSave={updateProfile}
         scale={s}
       />
 

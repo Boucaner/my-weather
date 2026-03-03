@@ -10,7 +10,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { current, hourly, daily, locationName, timeOfDay, tone } = req.body;
+    const { current, hourly, daily, locationName, timeOfDay, tone, profile } = req.body;
 
     const toneInstructions = {
       friendly: `Tone: Warm and conversational, like a helpful friend. Personable but not over the top.`,
@@ -19,6 +19,20 @@ export default async function handler(req, res) {
       coach: `Tone: Motivational and energetic, like a coach giving a pre-game pep talk. Use the weather as fuel. "Crisp air = perfect conditions." Make them want to get out there.`,
     };
     const toneGuide = toneInstructions[tone] || toneInstructions.friendly;
+
+    // Build profile context
+    const hasProfile = profile?.name || profile?.activities?.length > 0;
+    const activityLabels = {
+      running: 'running outdoors', cycling: 'cycling', commute_car: 'driving a car commute',
+      commute_transit: 'commuting by transit', kids_sports: "attending kids' outdoor sports",
+      gardening: 'gardening', golf: 'playing golf', hiking: 'hiking',
+      outdoor_work: 'outdoor work / construction', motorcycling: 'motorcycling',
+      fishing: 'fishing', dog_walks: 'walking a dog',
+    };
+    const profileContext = hasProfile ? `\nUser profile:
+Name: ${profile.name || 'not provided'}
+Activities affected by weather: ${profile.activities?.map(a => activityLabels[a] || a).join(', ') || 'none specified'}
+` : '';
 
     const weatherContext = `
 Location: ${locationName}
@@ -60,6 +74,9 @@ Sunset: ${daily.sunset}
             content: `You are a weather briefer for a personal weather app called "My Weather."
 
 ${toneGuide}
+${profileContext ? `\n${profileContext}` : ''}
+${profile?.name ? `Address the user by name (${profile.name}) naturally — not every sentence, just once if it fits.` : ''}
+${profile?.activities?.length > 0 ? `The user does these activities. If weather significantly affects any of them today, mention it with specific practical advice. Don't force it if conditions are mild.` : ''}
 
 Write a brief weather summary based on this data. 
 
