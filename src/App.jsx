@@ -1685,6 +1685,33 @@ export default function App() {
     localStorage.setItem('mw-notifLastShown', JSON.stringify(Date.now()));
   }, [weather, notifPrefs]);
 
+  // Fetch calendar events when weather loads (or calendar prefs change)
+  useEffect(() => {
+    if (!calendarPrefs?.enabled || !calendarPrefs?.url || !weather) return;
+    fetch('/api/calendar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url: calendarPrefs.url }),
+    })
+      .then(r => r.json())
+      .then(data => { if (!data.error) setCalendarEvents({ today: data.today, tomorrow: data.tomorrow }); })
+      .catch(() => {});
+  }, [calendarPrefs?.url, calendarPrefs?.enabled, weather]);
+
+  // Auto-fetch AI brief on load — waits for calendar data if connected
+  useEffect(() => {
+    if (briefMode !== 'ai' || aiBriefLoading || !weather) return;
+    // If calendar is connected, wait until calendarEvents resolves (null = not yet fetched)
+    if (calendarPrefs?.enabled && calendarPrefs?.url && calendarEvents === null) return;
+    if (aiBriefInitialFetched) return;
+    if (aiBrief && aiBriefFetchedAt.current && (Date.now() - aiBriefFetchedAt.current < AI_BRIEF_TTL)) {
+      setAiBriefInitialFetched(true);
+      return;
+    }
+    setAiBriefInitialFetched(true);
+    fetchAiBrief();
+  }, [briefMode, weather, calendarEvents, aiBriefInitialFetched]);
+
 
 
   // Loading
