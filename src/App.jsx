@@ -119,8 +119,8 @@ function HourlyCard({ time, temp, precipProb, code, isDay, scale }) {
   );
 }
 
-function DayCard({ date, high, low, code, precipProb, isToday, scale, globalMin, globalMax }) {
-  const info = getWeatherInfo(code, true);
+function DayCard({ date, high, low, code, isDay = 1, precipProb, isToday, scale, globalMin, globalMax }) {
+  const info = getWeatherInfo(code, isDay);
   const d = new Date(date + 'T12:00:00');
   const dayName = isToday ? "Today" : d.toLocaleDateString('en-US', { weekday: 'short' });
   const dateStr = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
@@ -1626,7 +1626,9 @@ export default function App() {
         <div className={viewTransitionClass} style={{ padding: '12px 28px 24px' }}>
           {daily.time.map((date, i) => (
             <DayCard key={date} date={date} high={daily.temperature_2m_max[i]}
-              low={daily.temperature_2m_min[i]} code={daily.weather_code[i]}
+              low={daily.temperature_2m_min[i]}
+              code={i === 0 ? current.weather_code : daily.weather_code[i]}
+              isDay={i === 0 ? current.is_day : 1}
               precipProb={daily.precipitation_probability_max[i]}
               isToday={i === 0} scale={s} globalMin={globalMin} globalMax={globalMax} />
           ))}
