@@ -1679,10 +1679,12 @@ export default function App() {
     if (notifPrefs.ampm === 'PM') targetH += 12;
     if (nowH < targetH) return;
     // Fire it
-    const title = 'My Weather';
-    const body = generateShortBrief(weather.current, weather.hourly, weather.daily);
-    new Notification(title, { body, icon: '/icon-192.png' });
-    localStorage.setItem('mw-notifLastShown', JSON.stringify(Date.now()));
+    try {
+      const title = 'My Weather';
+      const body = generateShortBrief(weather.current, weather.hourly, weather.daily);
+      new Notification(title, { body, icon: '/icon-192.png' });
+      localStorage.setItem('mw-notifLastShown', JSON.stringify(Date.now()));
+    } catch { /* notification failed silently */ }
   }, [weather, notifPrefs]);
 
   const fetchAiBriefWith = async (eventsOverride) => {
@@ -1763,8 +1765,8 @@ export default function App() {
       aiBriefFetchedAt.current = Date.now();
     } catch (err) {
       console.error('AI brief error:', err);
-      setAiBriefError('Couldn\'t generate AI brief. Using template.');
-      updateBriefMode('full');
+      setAiBriefError('Couldn\'t generate AI brief.');
+      if (!aiBrief) updateBriefMode('full');
     } finally {
       setAiBriefLoading(false);
     }
