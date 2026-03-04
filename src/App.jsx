@@ -1738,11 +1738,25 @@ export default function App() {
           timeOfDay,
           tone: briefTone,
           profile,
-          calendarEvents: eventsOverride !== undefined ? eventsOverride : calendarEvents,
+          calendarEvents: (() => {
+            const evts = eventsOverride ?? calendarEvents;
+            if (!evts) return null;
+            const nowH = now.getHours() * 60 + now.getMinutes();
+            const pastFilter = ev => {
+              if (ev.allDay) return true;
+              // parse "5:00 PM" -> minutes since midnight
+              const m = ev.start?.match(/(\d+):(\d+)\s*(AM|PM)/i);
+              if (!m) return true;
+              let h = parseInt(m[1]); const min = parseInt(m[2]); const ap = m[3].toUpperCase();
+              if (ap === 'PM' && h !== 12) h += 12;
+              if (ap === 'AM' && h === 12) h = 0;
+              return (h * 60 + min) > nowH; // only future events
+            };
+            return { today: evts.today?.filter(pastFilter) || [], tomorrow: evts.tomorrow || [] };
+          })(),
         }),
       });
       const data = await res.json();
-      if (data._debug) console.log('[Brief debug]', JSON.stringify(data._debug, null, 2));
       if (data.error) throw new Error(data.error);
       setAiBrief(data.brief);
       if (data.tomorrow) setAiBriefTomorrow(data.tomorrow);

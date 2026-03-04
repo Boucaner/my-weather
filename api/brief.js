@@ -116,17 +116,9 @@ ${weatherContext}`
     const text = data.content?.[0]?.text || '';
     const parts = text.split(/TOMORROW:\s*/i);
 
-    // Build prompt string for debug (same as what was sent)
-    const debugPrompt = `...calendarContext: ${calendarContext || '(none)'}\n\nweatherContext: ${weatherContext}`;
-
     return res.status(200).json({
       brief:    (parts[0] || '').trim(),
       tomorrow: (parts[1] || '').trim() || null,
-      _debug: {
-        calendarEventsReceived: calendarEvents,
-        calendarContext,
-        promptSnippet: debugPrompt,
-      },
     });
 
   } catch (err) {
