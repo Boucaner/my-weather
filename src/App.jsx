@@ -628,7 +628,330 @@ function ProfileSheet({ show, onClose, profile, onSave, scale }) {
   );
 }
 
-function SettingsSheet({ show, onClose, onOpenLocations, onOpenProfile, profile, fontSize, onFontSize, briefMode, onBriefMode, briefTone, onBriefTone, tempUnit, onTempUnit, locationName, scale }) {
+function NotificationSheet({ show, onClose, notifPrefs, onSave, scale }) {
+  const s = scale;
+  const [enabled, setEnabled] = useState(notifPrefs.enabled || false);
+  const [hour, setHour] = useState(notifPrefs.hour ?? 7);
+  const [ampm, setAmpm] = useState(notifPrefs.ampm || 'AM');
+  const [permState, setPermState] = useState(
+    'Notification' in window ? Notification.permission : 'unsupported'
+  );
+
+  useEffect(() => {
+    setEnabled(notifPrefs.enabled || false);
+    setHour(notifPrefs.hour ?? 7);
+    setAmpm(notifPrefs.ampm || 'AM');
+  }, [notifPrefs.enabled, notifPrefs.hour, notifPrefs.ampm]);
+
+  const handleToggle = async () => {
+    if (!enabled) {
+      if (permState === 'denied') return;
+      if (permState !== 'granted') {
+        const result = await Notification.requestPermission();
+        setPermState(result);
+        if (result !== 'granted') return;
+      }
+    }
+    setEnabled(v => !v);
+  };
+
+  const handleSave = () => {
+    onSave({ enabled, hour, ampm });
+    onClose();
+  };
+
+  if (!show) return null;
+
+  const hours = [1,2,3,4,5,6,7,8,9,10,11,12];
+
+  const permBanner = permState === 'denied' ? (
+    <div style={{
+      padding: '12px 14px', borderRadius: '8px', marginBottom: '20px',
+      background: 'rgba(231,111,81,0.08)', border: '1px solid rgba(231,111,81,0.25)',
+      fontSize: `${12 * s}px`, color: '#e76f51', lineHeight: 1.5,
+    }}>
+      ⚠️ Notifications are blocked by your browser. To enable, go to your browser settings and allow notifications for this site.
+    </div>
+  ) : permState === 'unsupported' ? (
+    <div style={{
+      padding: '12px 14px', borderRadius: '8px', marginBottom: '20px',
+      background: 'rgba(255,255,255,0.04)', border: `1px solid ${THEME.border}`,
+      fontSize: `${12 * s}px`, color: THEME.textMuted, lineHeight: 1.5,
+    }}>
+      Your browser doesn't support push notifications.
+    </div>
+  ) : null;
+
+  return (
+    <>
+      <div onClick={onClose} style={{
+        position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)',
+        backdropFilter: 'blur(4px)', zIndex: 200,
+      }} />
+      <div style={{
+        position: 'fixed', bottom: 0, left: '50%', transform: 'translateX(-50%)',
+        width: '100%', maxWidth: '480px',
+        background: '#16161f', borderRadius: '20px 20px 0 0',
+        border: '1px solid rgba(255,255,255,0.08)',
+        zIndex: 201, padding: '0 24px 40px',
+        boxShadow: '0 -20px 60px rgba(0,0,0,0.6)',
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'center', padding: '12px 0 4px' }}>
+          <div style={{ width: '36px', height: '4px', borderRadius: '2px', background: 'rgba(255,255,255,0.15)' }} />
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0 20px' }}>
+          <div>
+            <div style={{ fontFamily: THEME.fonts.mono, fontSize: `${9 * s}px`, letterSpacing: '2px', color: THEME.accent, marginBottom: '4px' }}>NOTIFICATIONS</div>
+            <div style={{ fontSize: `${12 * s}px`, color: THEME.textMuted }}>Daily weather brief alert</div>
+          </div>
+          <button onClick={onClose} style={{
+            background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)',
+            borderRadius: '50%', width: '28px', height: '28px',
+            color: THEME.textMuted, fontSize: '14px', cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>×</button>
+        </div>
+        {permBanner}
+        <div style={{
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+          padding: '16px 0', borderBottom: `1px solid rgba(255,255,255,0.05)`, marginBottom: '24px',
+        }}>
+          <div>
+            <div style={{ fontSize: `${14 * s}px`, color: THEME.textPrimary, fontWeight: 500 }}>Daily Brief</div>
+            <div style={{ fontSize: `${12 * s}px`, color: THEME.textMuted, marginTop: '2px' }}>Get a weather notification each morning</div>
+          </div>
+          <div onClick={permState !== 'denied' && permState !== 'unsupported' ? handleToggle : undefined} style={{
+            width: '44px', height: '26px', borderRadius: '13px', cursor: 'pointer',
+            background: enabled ? THEME.accent : 'rgba(255,255,255,0.1)',
+            position: 'relative', transition: 'background 0.2s ease',
+            opacity: permState === 'denied' || permState === 'unsupported' ? 0.4 : 1,
+          }}>
+            <div style={{
+              position: 'absolute', top: '3px', left: enabled ? '21px' : '3px',
+              width: '20px', height: '20px', borderRadius: '50%',
+              background: '#fff', transition: 'left 0.2s ease',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
+            }} />
+          </div>
+        </div>
+        {enabled && (
+          <div style={{ marginBottom: '28px' }}>
+            <div style={{ fontFamily: THEME.fonts.mono, fontSize: `${9 * s}px`, letterSpacing: '1.5px', color: THEME.textFaint, marginBottom: '14px' }}>NOTIFY ME AT</div>
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '6px', flex: 1 }}>
+                {hours.map(h => (
+                  <button key={h} onClick={() => setHour(h)} style={{
+                    padding: '10px 4px', borderRadius: '8px', cursor: 'pointer',
+                    background: hour === h ? 'rgba(94,177,191,0.15)' : 'rgba(255,255,255,0.04)',
+                    border: hour === h ? '1px solid rgba(94,177,191,0.35)' : `1px solid ${THEME.border}`,
+                    color: hour === h ? THEME.accent : THEME.textSecondary,
+                    fontSize: `${13 * s}px`, fontWeight: hour === h ? 600 : 400,
+                    fontFamily: THEME.fonts.mono,
+                  }}>{h}</button>
+                ))}
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                {['AM', 'PM'].map(p => (
+                  <button key={p} onClick={() => setAmpm(p)} style={{
+                    padding: '10px 14px', borderRadius: '8px', cursor: 'pointer',
+                    background: ampm === p ? 'rgba(94,177,191,0.15)' : 'rgba(255,255,255,0.04)',
+                    border: ampm === p ? '1px solid rgba(94,177,191,0.35)' : `1px solid ${THEME.border}`,
+                    color: ampm === p ? THEME.accent : THEME.textSecondary,
+                    fontSize: `${13 * s}px`, fontWeight: ampm === p ? 600 : 400,
+                    fontFamily: THEME.fonts.mono,
+                  }}>{p}</button>
+                ))}
+              </div>
+            </div>
+            <div style={{ marginTop: '14px', fontSize: `${13 * s}px`, color: THEME.textMuted, textAlign: 'center', fontFamily: THEME.fonts.mono }}>
+              Brief fires at {hour}:00 {ampm} when you open the app
+            </div>
+          </div>
+        )}
+        <div style={{
+          padding: '12px 14px', marginBottom: '20px',
+          background: 'rgba(94,177,191,0.04)', borderRadius: '8px',
+          border: '1px solid rgba(94,177,191,0.1)',
+          fontSize: `${12 * s}px`, color: THEME.textMuted, lineHeight: 1.6,
+        }}>
+          💡 Notification fires when you open My Weather after the set time — no background processes needed.
+        </div>
+        <button onClick={handleSave} style={{
+          width: '100%', padding: '14px',
+          background: 'rgba(94,177,191,0.15)', border: '1px solid rgba(94,177,191,0.3)',
+          borderRadius: '12px', color: THEME.accent,
+          fontSize: `${14 * s}px`, fontWeight: 600,
+          cursor: 'pointer', fontFamily: THEME.fonts.sans,
+        }}>Save</button>
+      </div>
+    </>
+  );
+}
+
+const PRIVACY_LABELS = {
+  'mw-activeLocation':  { label: 'Active Location',       icon: '📍', },
+  'mw-savedLocations':  { label: 'Saved Locations',       icon: '🏙️', },
+  'mw-profile':         { label: 'Your Profile',          icon: '👤', },
+  'mw-briefMode':       { label: 'Brief Mode',            icon: '📋', },
+  'mw-briefTone':       { label: 'Brief Tone',            icon: '🎭', },
+  'mw-fontSize':        { label: 'Text Size',             icon: '🔤', },
+  'mw-tempUnit':        { label: 'Temperature Unit',      icon: '🌡️', },
+  'mw-notifications':   { label: 'Notification Settings', icon: '🔔', },
+  'mw-notifLastShown':  { label: 'Last Notification',     icon: '🕐', },
+};
+
+function PrivacySheet({ show, onClose, scale }) {
+  const s = scale;
+  const [stored, setStored] = useState({});
+  const [confirmClear, setConfirmClear] = useState(false);
+
+  const loadStored = () => {
+    const result = {};
+    Object.keys(PRIVACY_LABELS).forEach(key => {
+      const val = localStorage.getItem(key);
+      if (val !== null) result[key] = val;
+    });
+    setStored(result);
+  };
+
+  useEffect(() => { if (show) loadStored(); }, [show]);
+
+  const deleteItem = (key) => { localStorage.removeItem(key); loadStored(); };
+
+  const clearAll = () => {
+    Object.keys(PRIVACY_LABELS).forEach(key => localStorage.removeItem(key));
+    loadStored();
+    setConfirmClear(false);
+  };
+
+  const formatValue = (key, raw) => {
+    try {
+      const parsed = JSON.parse(raw);
+      if (key === 'mw-profile') {
+        const name = parsed.name || '—';
+        const acts = parsed.activities?.length || 0;
+        return `${name}${acts ? `, ${acts} activities` : ''}`;
+      }
+      if (key === 'mw-activeLocation') return parsed.name || `${parsed.lat}, ${parsed.lon}`;
+      if (key === 'mw-savedLocations') return `${parsed.length} location${parsed.length !== 1 ? 's' : ''}`;
+      if (key === 'mw-notifications') return parsed.enabled ? `${parsed.hour}:00 ${parsed.ampm}` : 'Off';
+      if (key === 'mw-notifLastShown') return new Date(parsed).toLocaleDateString();
+      return String(parsed);
+    } catch { return raw; }
+  };
+
+  if (!show) return null;
+  const storedKeys = Object.keys(stored);
+  const totalItems = storedKeys.length;
+
+  return (
+    <>
+      <div onClick={onClose} style={{
+        position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)',
+        backdropFilter: 'blur(4px)', zIndex: 200,
+      }} />
+      <div style={{
+        position: 'fixed', bottom: 0, left: '50%', transform: 'translateX(-50%)',
+        width: '100%', maxWidth: '480px',
+        background: '#16161f', borderRadius: '20px 20px 0 0',
+        border: '1px solid rgba(255,255,255,0.08)',
+        zIndex: 201, padding: '0 24px 40px',
+        boxShadow: '0 -20px 60px rgba(0,0,0,0.6)',
+        maxHeight: '85vh', display: 'flex', flexDirection: 'column',
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'center', padding: '12px 0 4px', flexShrink: 0 }}>
+          <div style={{ width: '36px', height: '4px', borderRadius: '2px', background: 'rgba(255,255,255,0.15)' }} />
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0 20px', flexShrink: 0 }}>
+          <div>
+            <div style={{ fontFamily: THEME.fonts.mono, fontSize: `${9 * s}px`, letterSpacing: '2px', color: THEME.accent, marginBottom: '4px' }}>YOUR DATA</div>
+            <div style={{ fontSize: `${12 * s}px`, color: THEME.textMuted }}>{totalItems} item{totalItems !== 1 ? 's' : ''} stored on this device</div>
+          </div>
+          <button onClick={onClose} style={{
+            background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)',
+            borderRadius: '50%', width: '28px', height: '28px',
+            color: THEME.textMuted, fontSize: '14px', cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>×</button>
+        </div>
+        <div style={{ overflowY: 'auto', flex: 1 }}>
+          <div style={{
+            padding: '12px 14px', marginBottom: '20px',
+            background: 'rgba(94,177,191,0.04)', borderRadius: '8px',
+            border: '1px solid rgba(94,177,191,0.1)',
+            fontSize: `${12 * s}px`, color: THEME.textMuted, lineHeight: 1.6,
+          }}>
+            🔒 All data is stored locally on your device only. Nothing is sent to any server except your location name + conditions when generating an AI brief. No accounts, no tracking.
+          </div>
+          {totalItems === 0 ? (
+            <div style={{ textAlign: 'center', padding: '40px 0', color: THEME.textFaint, fontSize: `${13 * s}px` }}>
+              Nothing stored yet.
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '24px' }}>
+              {Object.entries(PRIVACY_LABELS).map(([key, meta]) => {
+                if (!stored[key]) return null;
+                return (
+                  <div key={key} style={{
+                    display: 'flex', alignItems: 'center', gap: '12px',
+                    padding: '14px', borderRadius: '10px',
+                    background: 'rgba(255,255,255,0.03)', border: `1px solid ${THEME.border}`,
+                  }}>
+                    <span style={{ fontSize: '20px', flexShrink: 0 }}>{meta.icon}</span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: `${13 * s}px`, color: THEME.textPrimary, fontWeight: 500 }}>{meta.label}</div>
+                      <div style={{
+                        fontSize: `${11 * s}px`, color: THEME.accent, fontFamily: THEME.fonts.mono,
+                        marginTop: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                      }}>{formatValue(key, stored[key])}</div>
+                    </div>
+                    <button onClick={() => deleteItem(key)} style={{
+                      background: 'transparent', border: 'none',
+                      color: THEME.textFaint, fontSize: '16px', cursor: 'pointer', padding: '4px 6px', flexShrink: 0,
+                    }}>✕</button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+          {totalItems > 0 && (
+            confirmClear ? (
+              <div style={{
+                padding: '16px', borderRadius: '10px', textAlign: 'center',
+                background: 'rgba(214,40,40,0.06)', border: '1px solid rgba(214,40,40,0.2)', marginBottom: '8px',
+              }}>
+                <div style={{ fontSize: `${13 * s}px`, color: '#e07a5f', marginBottom: '14px' }}>
+                  Clear all stored data? This can't be undone.
+                </div>
+                <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
+                  <button onClick={() => setConfirmClear(false)} style={{
+                    padding: '8px 20px', borderRadius: '8px', cursor: 'pointer',
+                    background: 'rgba(255,255,255,0.06)', border: `1px solid ${THEME.border}`,
+                    color: THEME.textMuted, fontSize: `${13 * s}px`,
+                  }}>Cancel</button>
+                  <button onClick={clearAll} style={{
+                    padding: '8px 20px', borderRadius: '8px', cursor: 'pointer',
+                    background: 'rgba(214,40,40,0.15)', border: '1px solid rgba(214,40,40,0.3)',
+                    color: '#e07a5f', fontSize: `${13 * s}px`, fontWeight: 600,
+                  }}>Clear All</button>
+                </div>
+              </div>
+            ) : (
+              <button onClick={() => setConfirmClear(true)} style={{
+                width: '100%', padding: '12px',
+                background: 'transparent', border: '1px solid rgba(214,40,40,0.2)',
+                borderRadius: '10px', color: '#e07a5f',
+                fontSize: `${13 * s}px`, cursor: 'pointer', fontFamily: THEME.fonts.sans,
+              }}>Clear All Data</button>
+            )
+          )}
+        </div>
+      </div>
+    </>
+  );
+}
+
+function SettingsSheet({ show, onClose, onOpenLocations, onOpenProfile, onOpenNotifications, onOpenPrivacy, profile, notifPrefs, fontSize, onFontSize, briefMode, onBriefMode, briefTone, onBriefTone, tempUnit, onTempUnit, locationName, scale }) {
   if (!show) return null;
   const s = scale;
 
@@ -764,13 +1087,33 @@ function SettingsSheet({ show, onClose, onOpenLocations, onOpenProfile, profile,
         </div>
 
         {/* Font size */}
-        <div style={{ ...rowStyle, borderBottom: 'none' }}>
+        <div style={rowStyle}>
           <div style={labelStyle}>Text Size</div>
           <select style={dropdownStyle} value={fontSize} onChange={e => onFontSize(e.target.value)}>
             {Object.entries(FONT_SIZES).map(([id, v]) => (
               <option key={id} value={id}>{v.label}</option>
             ))}
           </select>
+        </div>
+
+        {/* Notifications */}
+        <div style={{ ...rowStyle, cursor: 'pointer' }} onClick={onOpenNotifications}>
+          <div>
+            <div style={labelStyle}>Notifications</div>
+            <div style={sublabelStyle}>
+              {notifPrefs?.enabled ? `Daily brief at ${notifPrefs.hour}:00 ${notifPrefs.ampm}` : 'Off'}
+            </div>
+          </div>
+          <span style={{ color: THEME.textFaint, fontSize: '16px' }}>›</span>
+        </div>
+
+        {/* Privacy */}
+        <div style={{ ...rowStyle, cursor: 'pointer', borderBottom: 'none' }} onClick={onOpenPrivacy}>
+          <div>
+            <div style={labelStyle}>Your Data</div>
+            <div style={sublabelStyle}>See and manage what's stored</div>
+          </div>
+          <span style={{ color: THEME.textFaint, fontSize: '16px' }}>›</span>
         </div>
       </div>
     </>
@@ -909,6 +1252,11 @@ export default function App() {
     try { const p = localStorage.getItem('mw-profile'); return p ? JSON.parse(p) : { name: '', activities: [] }; } catch { return { name: '', activities: [] }; }
   });
   const [showProfile, setShowProfile] = useState(false);
+  const [notifPrefs, setNotifPrefsState] = useState(() => {
+    try { const n = localStorage.getItem('mw-notifications'); return n ? JSON.parse(n) : { enabled: false, hour: 7, ampm: 'AM' }; } catch { return { enabled: false, hour: 7, ampm: 'AM' }; }
+  });
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [showPrivacy, setShowPrivacy] = useState(false);
 
   const updateActiveLocation = (loc) => {
     setActiveLocationState(loc);
@@ -1025,6 +1373,31 @@ export default function App() {
     setAiBrief(null);
     setAiBriefTomorrow(null);
   };
+
+  const updateNotifPrefs = (prefs) => {
+    setNotifPrefsState(prefs);
+    localStorage.setItem('mw-notifications', JSON.stringify(prefs));
+  };
+
+  // Fire notification if enabled and past scheduled time and not yet shown today
+  useEffect(() => {
+    if (!notifPrefs?.enabled || !weather) return;
+    if (Notification.permission !== 'granted') return;
+    const today = new Date().toDateString();
+    const lastShown = localStorage.getItem('mw-notifLastShown');
+    if (lastShown) {
+      try { if (new Date(JSON.parse(lastShown)).toDateString() === today) return; } catch {}
+    }
+    const nowH = new Date().getHours();
+    let targetH = notifPrefs.hour % 12;
+    if (notifPrefs.ampm === 'PM') targetH += 12;
+    if (nowH < targetH) return;
+    // Fire it
+    const title = 'My Weather';
+    const body = generateShortBrief(weather.current, weather.hourly, weather.daily);
+    new Notification(title, { body, icon: '/icon-192.png' });
+    localStorage.setItem('mw-notifLastShown', JSON.stringify(Date.now()));
+  }, [weather, notifPrefs]);
 
   // Auto-fetch AI brief if mode is 'ai' on initial load
   useEffect(() => {
@@ -1676,7 +2049,10 @@ export default function App() {
         onClose={() => setShowSettings(false)}
         onOpenLocations={() => { setShowSettings(false); setShowLocationSheet(true); }}
         onOpenProfile={() => { setShowSettings(false); setShowProfile(true); }}
+        onOpenNotifications={() => { setShowSettings(false); setShowNotifications(true); }}
+        onOpenPrivacy={() => { setShowSettings(false); setShowPrivacy(true); }}
         profile={profile}
+        notifPrefs={notifPrefs}
         fontSize={fontSize}
         onFontSize={updateFontSize}
         briefMode={briefMode}
@@ -1695,6 +2071,22 @@ export default function App() {
         onClose={() => setShowProfile(false)}
         profile={profile}
         onSave={updateProfile}
+        scale={s}
+      />
+
+      {/* Notification Sheet */}
+      <NotificationSheet
+        show={showNotifications}
+        onClose={() => setShowNotifications(false)}
+        notifPrefs={notifPrefs}
+        onSave={updateNotifPrefs}
+        scale={s}
+      />
+
+      {/* Privacy Sheet */}
+      <PrivacySheet
+        show={showPrivacy}
+        onClose={() => setShowPrivacy(false)}
         scale={s}
       />
 
