@@ -461,6 +461,8 @@ function LocationSheet({ show, onClose, activeLocation, savedLocations, onSelect
   );
 }
 
+
+
 const ACTIVITY_OPTIONS = [
   { id: 'running',     label: 'Running',          icon: '🏃' },
   { id: 'cycling',     label: 'Cycling',          icon: '🚴' },
@@ -628,7 +630,266 @@ function ProfileSheet({ show, onClose, profile, onSave, scale }) {
   );
 }
 
+function CalendarSheet({ show, onClose, calendarPrefs, onSave, scale }) {
+  const s = scale;
+  const [url, setUrl] = useState(calendarPrefs.url || '');
+  const [enabled, setEnabled] = useState(calendarPrefs.enabled || false);
+  const [testing, setTesting] = useState(false);
+  const [testResult, setTestResult] = useState(null); // { ok, events, error }
+  const [showHowTo, setShowHowTo] = useState(false);
+
+  useEffect(() => {
+    setUrl(calendarPrefs.url || '');
+    setEnabled(calendarPrefs.enabled || false);
+    setTestResult(null);
+  }, [calendarPrefs.url, calendarPrefs.enabled]);
+
+  const testConnection = async () => {
+    if (!url.trim()) return;
+    setTesting(true);
+    setTestResult(null);
+    try {
+      const res = await fetch('/api/calendar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: url.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok || data.error) {
+        setTestResult({ ok: false, error: data.error || 'Connection failed' });
+      } else {
+        setTestResult({ ok: true, today: data.today, tomorrow: data.tomorrow, total: data.total });
+        setEnabled(true);
+      }
+    } catch {
+      setTestResult({ ok: false, error: 'Network error — check your URL' });
+    }
+    setTesting(false);
+  };
+
+  const handleSave = () => {
+    onSave({ url: url.trim(), enabled: enabled && !!url.trim() });
+    onClose();
+  };
+
+  if (!show) return null;
+
+  const EventList = ({ events, label }) => {
+    if (!events?.length) return (
+      <div style={{ fontSize: `${12 * s}px`, color: THEME.textFaint, fontStyle: 'italic', padding: '4px 0' }}>
+        No events {label}
+      </div>
+    );
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+        {events.map((ev, i) => (
+          <div key={i} style={{
+            display: 'flex', gap: '10px', alignItems: 'flex-start',
+            padding: '8px 10px', borderRadius: '8px',
+            background: 'rgba(255,255,255,0.03)', border: `1px solid ${THEME.border}`,
+          }}>
+            <div style={{ fontSize: `${11 * s}px`, color: THEME.accent, fontFamily: THEME.fonts.mono, minWidth: '52px', paddingTop: '1px' }}>
+              {ev.allDay ? 'All day' : ev.start}
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: `${13 * s}px`, color: THEME.textPrimary }}>{ev.title}</div>
+              {ev.location && (
+                <div style={{ fontSize: `${11 * s}px`, color: THEME.textMuted, marginTop: '2px' }}>📍 {ev.location}</div>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
+  return (
+    <>
+      <div onClick={onClose} style={{
+        position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)',
+        backdropFilter: 'blur(4px)', zIndex: 200,
+      }} />
+      <div style={{
+        position: 'fixed', bottom: 0, left: '50%', transform: 'translateX(-50%)',
+        width: '100%', maxWidth: '480px',
+        background: '#16161f', borderRadius: '20px 20px 0 0',
+        border: '1px solid rgba(255,255,255,0.08)',
+        zIndex: 201, padding: '0 24px 40px',
+        boxShadow: '0 -20px 60px rgba(0,0,0,0.6)',
+        maxHeight: '88vh', display: 'flex', flexDirection: 'column',
+      }}>
+        {/* Handle */}
+        <div style={{ display: 'flex', justifyContent: 'center', padding: '12px 0 4px', flexShrink: 0 }}>
+          <div style={{ width: '36px', height: '4px', borderRadius: '2px', background: 'rgba(255,255,255,0.15)' }} />
+        </div>
+
+        {/* Title */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0 20px', flexShrink: 0 }}>
+          <div>
+            <div style={{ fontFamily: THEME.fonts.mono, fontSize: `${9 * s}px`, letterSpacing: '2px', color: THEME.accent, marginBottom: '4px' }}>
+              CALENDAR
+            </div>
+            <div style={{ fontSize: `${12 * s}px`, color: THEME.textMuted }}>
+              Let weather know your schedule
+            </div>
+          </div>
+          <button onClick={onClose} style={{
+            background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)',
+            borderRadius: '50%', width: '28px', height: '28px',
+            color: THEME.textMuted, fontSize: '14px', cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>×</button>
+        </div>
+
+        <div style={{ overflowY: 'auto', flex: 1 }}>
+          {/* URL input */}
+          <div style={{ marginBottom: '12px' }}>
+            <div style={{ fontFamily: THEME.fonts.mono, fontSize: `${9 * s}px`, letterSpacing: '1.5px', color: THEME.textFaint, marginBottom: '10px' }}>
+              CALENDAR ICS URL
+            </div>
+            <input
+              type="url"
+              placeholder="https://calendar.google.com/calendar/ical/..."
+              value={url}
+              onChange={e => { setUrl(e.target.value); setTestResult(null); }}
+              style={{
+                width: '100%', background: 'rgba(255,255,255,0.06)',
+                border: `1px solid ${testResult?.ok ? 'rgba(94,177,191,0.4)' : testResult?.error ? 'rgba(231,111,81,0.4)' : THEME.border}`,
+                borderRadius: '10px', padding: '12px 16px', color: THEME.textPrimary,
+                fontSize: `${13 * s}px`, fontFamily: THEME.fonts.sans,
+                outline: 'none', boxSizing: 'border-box',
+              }}
+            />
+          </div>
+
+          {/* How to find URL */}
+          <div
+            onClick={() => setShowHowTo(v => !v)}
+            style={{ cursor: 'pointer', marginBottom: '16px' }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <span style={{ fontSize: `${12 * s}px`, color: THEME.accent }}>
+                {showHowTo ? '▼' : '▶'} How to find your ICS URL
+              </span>
+            </div>
+            {showHowTo && (
+              <div style={{
+                marginTop: '10px', padding: '14px', borderRadius: '10px',
+                background: 'rgba(255,255,255,0.03)', border: `1px solid ${THEME.border}`,
+                display: 'flex', flexDirection: 'column', gap: '14px',
+              }}>
+                {[
+                  {
+                    name: '📅 Google Calendar',
+                    steps: 'Settings → [your calendar] → Integrate calendar → copy the "Secret address in iCal format" link',
+                  },
+                  {
+                    name: '🍎 Apple Calendar',
+                    steps: 'Right-click a calendar → Get Info → check "Public Calendar" → copy the URL shown',
+                  },
+                  {
+                    name: '📧 Outlook',
+                    steps: 'Settings → View all → Calendar → Shared calendars → Publish → copy the ICS link',
+                  },
+                ].map(src => (
+                  <div key={src.name}>
+                    <div style={{ fontSize: `${13 * s}px`, color: THEME.textPrimary, fontWeight: 600, marginBottom: '4px' }}>{src.name}</div>
+                    <div style={{ fontSize: `${12 * s}px`, color: THEME.textMuted, lineHeight: 1.5 }}>{src.steps}</div>
+                  </div>
+                ))}
+                <div style={{ fontSize: `${11 * s}px`, color: THEME.textFaint, lineHeight: 1.5, borderTop: `1px solid ${THEME.border}`, paddingTop: '10px' }}>
+                  🔒 Use the <strong style={{ color: THEME.textMuted }}>secret/private</strong> link — it's a long URL that only you have. Your events are fetched on our server and never stored.
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Test result */}
+          {testResult && (
+            <div style={{
+              padding: '14px', borderRadius: '10px', marginBottom: '16px',
+              background: testResult.ok ? 'rgba(94,177,191,0.06)' : 'rgba(231,111,81,0.06)',
+              border: `1px solid ${testResult.ok ? 'rgba(94,177,191,0.25)' : 'rgba(231,111,81,0.25)'}`,
+            }}>
+              {testResult.ok ? (
+                <>
+                  <div style={{ fontSize: `${13 * s}px`, color: THEME.accent, fontWeight: 600, marginBottom: '12px' }}>
+                    ✓ Connected — {testResult.total} events found
+                  </div>
+                  <div style={{ fontSize: `${10 * s}px`, fontFamily: THEME.fonts.mono, letterSpacing: '1.5px', color: THEME.textFaint, marginBottom: '8px' }}>TODAY</div>
+                  <EventList events={testResult.today} label="today" />
+                  <div style={{ fontSize: `${10 * s}px`, fontFamily: THEME.fonts.mono, letterSpacing: '1.5px', color: THEME.textFaint, margin: '12px 0 8px' }}>TOMORROW</div>
+                  <EventList events={testResult.tomorrow} label="tomorrow" />
+                </>
+              ) : (
+                <div style={{ fontSize: `${13 * s}px`, color: '#e76f51' }}>
+                  ✗ {testResult.error}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Enable toggle (only if URL is set) */}
+          {calendarPrefs.url && !testResult && (
+            <div style={{
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+              padding: '14px 0', borderBottom: `1px solid rgba(255,255,255,0.05)`, marginBottom: '16px',
+            }}>
+              <div style={{ fontSize: `${14 * s}px`, color: THEME.textPrimary, fontWeight: 500 }}>
+                Include in brief
+              </div>
+              <div onClick={() => setEnabled(v => !v)} style={{
+                width: '44px', height: '26px', borderRadius: '13px', cursor: 'pointer',
+                background: enabled ? THEME.accent : 'rgba(255,255,255,0.1)',
+                position: 'relative', transition: 'background 0.2s ease',
+              }}>
+                <div style={{
+                  position: 'absolute', top: '3px', left: enabled ? '21px' : '3px',
+                  width: '20px', height: '20px', borderRadius: '50%',
+                  background: '#fff', transition: 'left 0.2s ease',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
+                }} />
+              </div>
+            </div>
+          )}
+
+          {/* How it works */}
+          <div style={{
+            padding: '12px 14px', marginBottom: '20px',
+            background: 'rgba(94,177,191,0.04)', borderRadius: '8px',
+            border: '1px solid rgba(94,177,191,0.1)',
+            fontSize: `${12 * s}px`, color: THEME.textMuted, lineHeight: 1.6,
+          }}>
+            💡 Your events are fetched fresh each time you open the app and passed to the AI brief — so if you have a 6pm outdoor dinner or a morning commute, the brief can flag relevant weather for it.
+          </div>
+        </div>
+
+        {/* Buttons */}
+        <div style={{ flexShrink: 0, paddingTop: '12px', display: 'flex', gap: '10px' }}>
+          {url.trim() && !testResult?.ok && (
+            <button onClick={testConnection} disabled={testing} style={{
+              flex: 1, padding: '13px',
+              background: 'rgba(255,255,255,0.06)', border: `1px solid ${THEME.border}`,
+              borderRadius: '12px', color: testing ? THEME.textFaint : THEME.textPrimary,
+              fontSize: `${14 * s}px`, fontWeight: 500, cursor: testing ? 'default' : 'pointer',
+              fontFamily: THEME.fonts.sans,
+            }}>{testing ? 'Testing...' : 'Test Connection'}</button>
+          )}
+          <button onClick={handleSave} style={{
+            flex: 2, padding: '13px',
+            background: 'rgba(94,177,191,0.15)', border: '1px solid rgba(94,177,191,0.3)',
+            borderRadius: '12px', color: THEME.accent,
+            fontSize: `${14 * s}px`, fontWeight: 600, cursor: 'pointer',
+            fontFamily: THEME.fonts.sans,
+          }}>Save</button>
+        </div>
+      </div>
+    </>
+  );
+}
+
 function NotificationSheet({ show, onClose, notifPrefs, onSave, scale }) {
+
   const s = scale;
   const [enabled, setEnabled] = useState(notifPrefs.enabled || false);
   const [hour, setHour] = useState(notifPrefs.hour ?? 7);
@@ -792,12 +1053,14 @@ const PRIVACY_LABELS = {
   'mw-activeLocation':  { label: 'Active Location',       icon: '📍', },
   'mw-savedLocations':  { label: 'Saved Locations',       icon: '🏙️', },
   'mw-profile':         { label: 'Your Profile',          icon: '👤', },
+  'mw-calendarUrl':     { label: 'Calendar URL',          icon: '📅', },
   'mw-briefMode':       { label: 'Brief Mode',            icon: '📋', },
   'mw-briefTone':       { label: 'Brief Tone',            icon: '🎭', },
   'mw-fontSize':        { label: 'Text Size',             icon: '🔤', },
   'mw-tempUnit':        { label: 'Temperature Unit',      icon: '🌡️', },
   'mw-notifications':   { label: 'Notification Settings', icon: '🔔', },
   'mw-notifLastShown':  { label: 'Last Notification',     icon: '🕐', },
+  'mw-calendar':        { label: 'Calendar ICS URL',      icon: '📅', },
 };
 
 function PrivacySheet({ show, onClose, scale }) {
@@ -832,10 +1095,12 @@ function PrivacySheet({ show, onClose, scale }) {
         const acts = parsed.activities?.length || 0;
         return `${name}${acts ? `, ${acts} activities` : ''}`;
       }
+      if (key === 'mw-calendarUrl') return parsed ? 'Connected (URL hidden)' : 'Not connected';
       if (key === 'mw-activeLocation') return parsed.name || `${parsed.lat}, ${parsed.lon}`;
       if (key === 'mw-savedLocations') return `${parsed.length} location${parsed.length !== 1 ? 's' : ''}`;
       if (key === 'mw-notifications') return parsed.enabled ? `${parsed.hour}:00 ${parsed.ampm}` : 'Off';
       if (key === 'mw-notifLastShown') return new Date(parsed).toLocaleDateString();
+      if (key === 'mw-calendar') return parsed.enabled ? 'Connected' : 'Saved (disabled)';
       return String(parsed);
     } catch { return raw; }
   };
@@ -951,7 +1216,7 @@ function PrivacySheet({ show, onClose, scale }) {
   );
 }
 
-function SettingsSheet({ show, onClose, onOpenLocations, onOpenProfile, onOpenNotifications, onOpenPrivacy, profile, notifPrefs, fontSize, onFontSize, briefMode, onBriefMode, briefTone, onBriefTone, tempUnit, onTempUnit, locationName, scale }) {
+function SettingsSheet({ show, onClose, onOpenLocations, onOpenProfile, onOpenNotifications, onOpenPrivacy, onOpenCalendar, profile, notifPrefs, calendarUrl, fontSize, onFontSize, briefMode, onBriefMode, briefTone, onBriefTone, tempUnit, onTempUnit, locationName, scale }) {
   if (!show) return null;
   const s = scale;
 
@@ -1038,6 +1303,15 @@ function SettingsSheet({ show, onClose, onOpenLocations, onOpenProfile, onOpenNo
             </div>
           </div>
           <span style={{ color: THEME.textFaint, fontSize: '16px' }}>›</span>
+        </div>
+
+        {/* Calendar */}
+        <div style={{ ...rowStyle, cursor: 'pointer' }} onClick={onOpenCalendar}>
+          <div>
+            <div style={labelStyle}>Calendar</div>
+            <div style={sublabelStyle}>{calendarUrl ? '✓ Connected' : 'Connect for event-aware briefs'}</div>
+          </div>
+          <span style={{ color: calendarUrl ? THEME.accent : THEME.textFaint, fontSize: '16px' }}>{calendarUrl ? '✓' : '›'}</span>
         </div>
 
         {/* Location */}
@@ -1257,6 +1531,18 @@ export default function App() {
   });
   const [showNotifications, setShowNotifications] = useState(false);
   const [showPrivacy, setShowPrivacy] = useState(false);
+  const [calendarPrefs, setCalendarPrefsState] = useState(() => {
+    try { const c = localStorage.getItem('mw-calendar'); return c ? JSON.parse(c) : { url: '', enabled: false }; } catch { return { url: '', enabled: false }; }
+  });
+  const [calendarEvents, setCalendarEvents] = useState(null); // { today, tomorrow }
+  const [showCalendar, setShowCalendar] = useState(false);
+
+  const updateCalendarPrefs = (prefs) => {
+    setCalendarPrefsState(prefs);
+    localStorage.setItem('mw-calendar', JSON.stringify(prefs));
+    if (!prefs.enabled) setCalendarEvents(null);
+  };
+
 
   const updateActiveLocation = (loc) => {
     setActiveLocationState(loc);
@@ -1399,82 +1685,7 @@ export default function App() {
     localStorage.setItem('mw-notifLastShown', JSON.stringify(Date.now()));
   }, [weather, notifPrefs]);
 
-  // Auto-fetch AI brief if mode is 'ai' on initial load
-  useEffect(() => {
-    if (briefMode !== 'ai' || aiBriefInitialFetched || aiBriefLoading || !weather) return;
-    // Skip if we already have a fresh brief
-    if (aiBrief && aiBriefFetchedAt.current && (Date.now() - aiBriefFetchedAt.current < AI_BRIEF_TTL)) {
-      setAiBriefInitialFetched(true);
-      return;
-    }
-    setAiBriefInitialFetched(true);
-    setAiBriefLoading(true);
-    setAiBriefError(null);
 
-    const { current, hourly, daily } = weather;
-    const hour = new Date().getHours();
-    const timeOfDay = hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : 'evening';
-    const sunriseStr = daily.sunrise?.[0] ? new Date(daily.sunrise[0]).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : '';
-    const sunsetStr = daily.sunset?.[0] ? new Date(daily.sunset[0]).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : '';
-    const dp = current.dew_point_2m != null ? Math.round(current.dew_point_2m) : 0;
-    const n = new Date();
-    const upcomingPrecip = hourly.time
-      .map((t, i) => ({ time: new Date(t), prob: hourly.precipitation_probability[i] }))
-      .filter(h => h.time > n && h.time < new Date(n.getTime() + 6 * 60 * 60 * 1000))
-      .map(h => `${h.time.getHours() % 12 || 12}${h.time.getHours() >= 12 ? 'pm' : 'am'}: ${h.prob}%`)
-      .join(', ');
-
-    fetch('/api/brief', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        current: {
-          temp: Math.round(current.temperature_2m),
-          feelsLike: Math.round(current.apparent_temperature),
-          conditions: getWeatherInfo(current.weather_code, current.is_day).label,
-          windDir: getWindDirection(current.wind_direction_10m),
-          windSpeed: Math.round(current.wind_speed_10m),
-          gustSpeed: Math.round(current.wind_gusts_10m),
-          humidity: current.relative_humidity_2m,
-          dewPoint: dp,
-          cloudCover: current.cloud_cover,
-          uvMax: Math.round(daily.uv_index_max[0]),
-          hour: hour,
-        },
-        hourly: { precipProbs: upcomingPrecip },
-        daily: {
-          todayHigh: Math.round(daily.temperature_2m_max[0]),
-          todayLow: Math.round(daily.temperature_2m_min[0]),
-          todayPrecipChance: daily.precipitation_probability_max[0],
-          tomorrowConditions: daily.weather_code[1] != null ? getWeatherInfo(daily.weather_code[1], 1).label : 'Unknown',
-          tomorrowHigh: daily.temperature_2m_max[1] != null ? Math.round(daily.temperature_2m_max[1]) : '?',
-          tomorrowLow: daily.temperature_2m_min[1] != null ? Math.round(daily.temperature_2m_min[1]) : '?',
-          tomorrowPrecipChance: daily.precipitation_probability_max[1] || 0,
-          sunrise: sunriseStr,
-          sunset: sunsetStr,
-        },
-        locationName,
-        timeOfDay,
-        tone: briefTone,
-        profile,
-      }),
-    })
-      .then(r => r.json())
-      .then(data => {
-        if (data.error) throw new Error(data.error);
-        setAiBrief(data.brief);
-        if (data.tomorrow) setAiBriefTomorrow(data.tomorrow);
-        aiBriefFetchedAt.current = Date.now();
-        setAiBriefLoading(false);
-      })
-      .catch(err => {
-        console.error('AI brief error:', err);
-        setAiBriefError('Couldn\'t generate AI brief. Using template.');
-        setBriefModeState('full');
-        localStorage.setItem('mw-briefMode', 'full');
-        setAiBriefLoading(false);
-      });
-  }, [briefMode, weather, aiBriefInitialFetched]);
 
   // Loading
   if (loading && !weather) {
@@ -1600,6 +1811,7 @@ export default function App() {
           timeOfDay,
           tone: briefTone,
           profile,
+          calendarEvents,
         }),
       });
       const data = await res.json();
@@ -2051,8 +2263,10 @@ export default function App() {
         onOpenProfile={() => { setShowSettings(false); setShowProfile(true); }}
         onOpenNotifications={() => { setShowSettings(false); setShowNotifications(true); }}
         onOpenPrivacy={() => { setShowSettings(false); setShowPrivacy(true); }}
+        onOpenCalendar={() => { setShowSettings(false); setShowCalendar(true); }}
         profile={profile}
         notifPrefs={notifPrefs}
+        calendarUrl={calendarPrefs?.enabled ? calendarPrefs.url : null}
         fontSize={fontSize}
         onFontSize={updateFontSize}
         briefMode={briefMode}
@@ -2062,6 +2276,15 @@ export default function App() {
         tempUnit={tempUnit}
         onTempUnit={updateTempUnit}
         locationName={locationName}
+        scale={s}
+      />
+
+      {/* Calendar Sheet */}
+      <CalendarSheet
+        show={showCalendar}
+        onClose={() => setShowCalendar(false)}
+        calendarPrefs={calendarPrefs}
+        onSave={updateCalendarPrefs}
         scale={s}
       />
 
