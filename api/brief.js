@@ -76,7 +76,7 @@ Tomorrow: ${daily.tomorrowConditions}, High ${daily.tomorrowHigh}°F / Low ${dai
           content: `You are a weather briefer for a personal weather app called "My Weather."
 
 ${toneGuide}
-${profileContext ? `\n${profileContext}\n` : ''}${profile?.name ? `Address the user by name (${profile.name}) naturally — once if it fits, not every sentence.\n` : ''}${profile?.activities?.length > 0 ? `The user does these activities. If weather significantly affects any today, mention it with specific practical advice. Don't force it if conditions are mild.\n` : ''}${calendarContext ? `\n${calendarContext}\n\nCalendar instructions: Cross-reference weather timing with their events. Flag it when weather will meaningfully affect a specific event — be specific: "You've got a 6pm soccer game — storms are likely by then." Skip events where weather is irrelevant (indoor meetings, etc.). Use tomorrow's events only in the TOMORROW sentence.\n` : ''}
+${profileContext ? `\n${profileContext}\n` : ''}${profile?.name ? `Address the user by name (${profile.name}) naturally — once if it fits, not every sentence.\n` : ''}${profile?.activities?.length > 0 ? `The user does these activities. If weather significantly affects any today, mention it with specific practical advice. Don't force it if conditions are mild.\n` : ''}${calendarContext ? `\n${calendarContext}\n\nCalendar instructions: The user has outdoor events today. Always acknowledge them — mention conditions relevant to each event (temp, rain chance, wind, UV, etc.) even if weather is pleasant. Be specific and practical: "You've got a beach trip at 2pm — it'll be sunny and hot, pack sunscreen." Mention tomorrow's events only in the TOMORROW sentence.\n` : ''}
 Write a brief weather summary based on this data.
 
 CRITICAL — Time awareness:
@@ -116,13 +116,16 @@ ${weatherContext}`
     const text = data.content?.[0]?.text || '';
     const parts = text.split(/TOMORROW:\s*/i);
 
+    // Build prompt string for debug (same as what was sent)
+    const debugPrompt = `...calendarContext: ${calendarContext || '(none)'}\n\nweatherContext: ${weatherContext}`;
+
     return res.status(200).json({
       brief:    (parts[0] || '').trim(),
       tomorrow: (parts[1] || '').trim() || null,
       _debug: {
         calendarEventsReceived: calendarEvents,
         calendarContext,
-        promptLength: text.length,
+        promptSnippet: debugPrompt,
       },
     });
 
