@@ -1685,39 +1685,6 @@ export default function App() {
     localStorage.setItem('mw-notifLastShown', JSON.stringify(Date.now()));
   }, [weather, notifPrefs]);
 
-  // On load: fetch calendar (if connected), then fetch AI brief
-  useEffect(() => {
-    if (!weather || aiBriefInitialFetched) return;
-    if (briefMode !== 'ai') return;
-    setAiBriefInitialFetched(true);
-
-    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-
-    const doFetch = async () => {
-      let events = null;
-      if (calendarPrefs?.enabled && calendarPrefs?.url) {
-        try {
-          const r = await fetch('/api/calendar', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ url: calendarPrefs.url, tz }),
-          });
-          const d = await r.json();
-          if (!d.error) {
-            events = { today: d.today, tomorrow: d.tomorrow };
-            setCalendarEvents(events);
-          }
-        } catch { /* silent — brief still works without calendar */ }
-      }
-      // Now fetch brief with whatever events we got
-      aiBriefFetchedAt.current = null;
-      fetchAiBriefWith(events);
-    };
-
-    doFetch();
-  }, [weather, briefMode, aiBriefInitialFetched]);
-
-
   // Loading
   if (loading && !weather) {
     return <LoadingSkeleton />;
@@ -1855,6 +1822,37 @@ export default function App() {
   };
 
   const fetchAiBrief = () => fetchAiBriefWith(undefined);
+
+  // On load: fetch calendar (if connected), then fetch AI brief sequentially
+  useEffect(() => {
+    if (!weather || aiBriefInitialFetched) return;
+    if (briefMode !== 'ai') return;
+    setAiBriefInitialFetched(true);
+
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+    const doFetch = async () => {
+      let events = null;
+      if (calendarPrefs?.enabled && calendarPrefs?.url) {
+        try {
+          const r = await fetch('/api/calendar', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url: calendarPrefs.url, tz }),
+          });
+          const d = await r.json();
+          if (!d.error) {
+            events = { today: d.today, tomorrow: d.tomorrow };
+            setCalendarEvents(events);
+          }
+        } catch { /* silent — brief still works without calendar */ }
+      }
+      aiBriefFetchedAt.current = null;
+      fetchAiBriefWith(events);
+    };
+
+    doFetch();
+  }, [weather, briefMode, aiBriefInitialFetched]);
 
   // Background
   const isDay = current.is_day;
