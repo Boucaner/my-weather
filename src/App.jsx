@@ -652,7 +652,7 @@ function CalendarSheet({ show, onClose, calendarPrefs, onSave, scale }) {
       const res = await fetch('/api/calendar', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: url.trim() }),
+        body: JSON.stringify({ url: url.trim(), tz: Intl.DateTimeFormat().resolvedOptions().timeZone }),
       });
       const data = await res.json();
       if (!res.ok || data.error) {

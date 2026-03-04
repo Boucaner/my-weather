@@ -12,6 +12,7 @@ export default defineConfig({
         name: 'My Weather',
         short_name: 'My Weather',
         description: 'Life-first weather intelligence',
+        version: '1.6.0',
         theme_color: '#0a0a0f',
         background_color: '#0a0a0f',
         display: 'standalone',
