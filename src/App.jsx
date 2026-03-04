@@ -1685,6 +1685,105 @@ export default function App() {
     localStorage.setItem('mw-notifLastShown', JSON.stringify(Date.now()));
   }, [weather, notifPrefs]);
 
+  const fetchAiBriefWith = async (eventsOverride) => {
+    if (!weather || aiBriefLoading) return;
+    const { current: c, hourly: h, daily: d } = weather;
+    setAiBrief(null);
+    setAiBriefTomorrow(null);
+    setAiBriefLoading(true);
+    setAiBriefError(null);
+    try {
+      const hour = now.getHours();
+      const timeOfDay = hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : 'evening';
+      const dp = c.dew_point_2m != null
+        ? Math.round(c.dew_point_2m)
+        : calcDewPointFromTempHumidity(Math.round(c.temperature_2m), c.relative_humidity_2m);
+      const sunriseStr = d.sunrise?.[0] ? new Date(d.sunrise[0]).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : '';
+      const sunsetStr  = d.sunset?.[0]  ? new Date(d.sunset[0]).toLocaleTimeString('en-US',  { hour: 'numeric', minute: '2-digit' }) : '';
+      const upcomingPrecip = h.time
+        .map((t, i) => ({ time: new Date(t), prob: h.precipitation_probability[i] }))
+        .filter(x => x.time > now && x.time < new Date(now.getTime() + 6 * 60 * 60 * 1000))
+        .map(x => `${x.time.getHours() % 12 || 12}${x.time.getHours() >= 12 ? 'pm' : 'am'}: ${x.prob}%`)
+        .join(', ');
+      const res = await fetch('/api/brief', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          current: {
+            temp: Math.round(c.temperature_2m),
+            feelsLike: Math.round(c.apparent_temperature),
+            conditions: getWeatherInfo(c.weather_code, c.is_day).label,
+            windDir: getWindDirection(c.wind_direction_10m),
+            windSpeed: Math.round(c.wind_speed_10m),
+            gustSpeed: Math.round(c.wind_gusts_10m),
+            humidity: c.relative_humidity_2m,
+            dewPoint: dp,
+            cloudCover: c.cloud_cover,
+            uvMax: Math.round(d.uv_index_max[0]),
+            hour,
+          },
+          hourly: { precipProbs: upcomingPrecip },
+          daily: {
+            todayHigh: Math.round(d.temperature_2m_max[0]),
+            todayLow: Math.round(d.temperature_2m_min[0]),
+            todayPrecipChance: d.precipitation_probability_max[0],
+            tomorrowConditions: d.weather_code[1] != null ? getWeatherInfo(d.weather_code[1], 1).label : 'Unknown',
+            tomorrowHigh: d.temperature_2m_max[1] != null ? Math.round(d.temperature_2m_max[1]) : '?',
+            tomorrowLow: d.temperature_2m_min[1] != null ? Math.round(d.temperature_2m_min[1]) : '?',
+            tomorrowPrecipChance: d.precipitation_probability_max[1] || 0,
+            sunrise: sunriseStr,
+            sunset: sunsetStr,
+          },
+          locationName,
+          timeOfDay,
+          tone: briefTone,
+          profile,
+          calendarEvents: eventsOverride !== undefined ? eventsOverride : calendarEvents,
+        }),
+      });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      setAiBrief(data.brief);
+      if (data.tomorrow) setAiBriefTomorrow(data.tomorrow);
+      aiBriefFetchedAt.current = Date.now();
+    } catch (err) {
+      console.error('AI brief error:', err);
+      setAiBriefError('Couldn\'t generate AI brief. Using template.');
+      updateBriefMode('full');
+    } finally {
+      setAiBriefLoading(false);
+    }
+  };
+
+  const fetchAiBrief = () => fetchAiBriefWith(undefined);
+
+  // On load: fetch calendar then brief — sequential so brief always has events
+  useEffect(() => {
+    if (!weather || aiBriefInitialFetched || briefMode !== 'ai') return;
+    setAiBriefInitialFetched(true);
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const doFetch = async () => {
+      let events = null;
+      if (calendarPrefs?.enabled && calendarPrefs?.url) {
+        try {
+          const r = await fetch('/api/calendar', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url: calendarPrefs.url, tz }),
+          });
+          const d = await r.json();
+          if (!d.error) {
+            events = { today: d.today, tomorrow: d.tomorrow };
+            setCalendarEvents(events);
+          }
+        } catch { /* brief still works without calendar */ }
+      }
+      aiBriefFetchedAt.current = null;
+      fetchAiBriefWith(events);
+    };
+    doFetch();
+  }, [weather, briefMode, aiBriefInitialFetched]);
+
   // Loading
   if (loading && !weather) {
     return <LoadingSkeleton />;
@@ -1754,105 +1853,6 @@ export default function App() {
   const summary = generateDailySummary(current, hourly, daily);
   const shortBrief = generateShortBrief(current, hourly, daily);
   const tomorrowSummary = generateTomorrowSummary(daily);
-
-  const fetchAiBriefWith = async (eventsOverride) => {
-    if (aiBriefLoading) return;
-    setAiBrief(null);
-    setAiBriefTomorrow(null);
-    setAiBriefLoading(true);
-    setAiBriefError(null);
-    try {
-      const hour = now.getHours();
-      const timeOfDay = hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : 'evening';
-      const sunriseStr = daily.sunrise?.[0] ? new Date(daily.sunrise[0]).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : '';
-      const sunsetStr = daily.sunset?.[0] ? new Date(daily.sunset[0]).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : '';
-      const upcomingPrecip = hourly.time
-        .map((t, i) => ({ time: new Date(t), prob: hourly.precipitation_probability[i] }))
-        .filter(h => h.time > now && h.time < new Date(now.getTime() + 6 * 60 * 60 * 1000))
-        .map(h => `${h.time.getHours() % 12 || 12}${h.time.getHours() >= 12 ? 'pm' : 'am'}: ${h.prob}%`)
-        .join(', ');
-      const res = await fetch('/api/brief', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          current: {
-            temp: Math.round(current.temperature_2m),
-            feelsLike: Math.round(current.apparent_temperature),
-            conditions: getWeatherInfo(current.weather_code, current.is_day).label,
-            windDir: getWindDirection(current.wind_direction_10m),
-            windSpeed: Math.round(current.wind_speed_10m),
-            gustSpeed: Math.round(current.wind_gusts_10m),
-            humidity: current.relative_humidity_2m,
-            dewPoint: dewPoint,
-            cloudCover: current.cloud_cover,
-            uvMax: uvMax,
-            hour: hour,
-          },
-          hourly: { precipProbs: upcomingPrecip },
-          daily: {
-            todayHigh: Math.round(daily.temperature_2m_max[0]),
-            todayLow: Math.round(daily.temperature_2m_min[0]),
-            todayPrecipChance: daily.precipitation_probability_max[0],
-            tomorrowConditions: daily.weather_code[1] != null ? getWeatherInfo(daily.weather_code[1], 1).label : 'Unknown',
-            tomorrowHigh: daily.temperature_2m_max[1] != null ? Math.round(daily.temperature_2m_max[1]) : '?',
-            tomorrowLow: daily.temperature_2m_min[1] != null ? Math.round(daily.temperature_2m_min[1]) : '?',
-            tomorrowPrecipChance: daily.precipitation_probability_max[1] || 0,
-            sunrise: sunriseStr,
-            sunset: sunsetStr,
-          },
-          locationName,
-          timeOfDay,
-          tone: briefTone,
-          profile,
-          calendarEvents: eventsOverride !== undefined ? eventsOverride : calendarEvents,
-        }),
-      });
-      const data = await res.json();
-      if (data.error) throw new Error(data.error);
-      setAiBrief(data.brief);
-      if (data.tomorrow) setAiBriefTomorrow(data.tomorrow);
-      aiBriefFetchedAt.current = Date.now();
-    } catch (err) {
-      console.error('AI brief error:', err);
-      setAiBriefError('Couldn\'t generate AI brief. Using template.');
-      updateBriefMode('full');
-    } finally {
-      setAiBriefLoading(false);
-    }
-  };
-
-  const fetchAiBrief = () => fetchAiBriefWith(undefined);
-
-  // On load: fetch calendar (if connected), then fetch AI brief sequentially
-  useEffect(() => {
-    if (!weather || aiBriefInitialFetched) return;
-    if (briefMode !== 'ai') return;
-    setAiBriefInitialFetched(true);
-
-    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-
-    const doFetch = async () => {
-      let events = null;
-      if (calendarPrefs?.enabled && calendarPrefs?.url) {
-        try {
-          const r = await fetch('/api/calendar', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ url: calendarPrefs.url, tz }),
-          });
-          const d = await r.json();
-          if (!d.error) {
-            events = { today: d.today, tomorrow: d.tomorrow };
-            setCalendarEvents(events);
-          }
-        } catch { /* silent — brief still works without calendar */ }
-      }
-      aiBriefFetchedAt.current = null;
-      fetchAiBriefWith(events);
-    };
-
-    doFetch();
-  }, [weather, briefMode, aiBriefInitialFetched]);
 
   // Background
   const isDay = current.is_day;
