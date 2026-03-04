@@ -1685,33 +1685,37 @@ export default function App() {
     localStorage.setItem('mw-notifLastShown', JSON.stringify(Date.now()));
   }, [weather, notifPrefs]);
 
-  // Fetch calendar events when weather loads (or calendar prefs change)
+  // On load: fetch calendar (if connected), then fetch AI brief
   useEffect(() => {
-    if (!calendarPrefs?.enabled || !calendarPrefs?.url || !weather) return;
-    fetch('/api/calendar', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ url: calendarPrefs.url }),
-    })
-      .then(r => r.json())
-      .then(data => { if (!data.error) setCalendarEvents({ today: data.today, tomorrow: data.tomorrow }); })
-      .catch(() => {});
-  }, [calendarPrefs?.url, calendarPrefs?.enabled, weather]);
-
-  // Auto-fetch AI brief on load — waits for calendar data if connected
-  useEffect(() => {
-    if (briefMode !== 'ai' || aiBriefLoading || !weather) return;
-    // If calendar is connected, wait until calendarEvents resolves (null = not yet fetched)
-    if (calendarPrefs?.enabled && calendarPrefs?.url && calendarEvents === null) return;
-    if (aiBriefInitialFetched) return;
-    if (aiBrief && aiBriefFetchedAt.current && (Date.now() - aiBriefFetchedAt.current < AI_BRIEF_TTL)) {
-      setAiBriefInitialFetched(true);
-      return;
-    }
+    if (!weather || aiBriefInitialFetched) return;
+    if (briefMode !== 'ai') return;
     setAiBriefInitialFetched(true);
-    fetchAiBrief();
-  }, [briefMode, weather, calendarEvents, aiBriefInitialFetched]);
 
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+    const doFetch = async () => {
+      let events = null;
+      if (calendarPrefs?.enabled && calendarPrefs?.url) {
+        try {
+          const r = await fetch('/api/calendar', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url: calendarPrefs.url, tz }),
+          });
+          const d = await r.json();
+          if (!d.error) {
+            events = { today: d.today, tomorrow: d.tomorrow };
+            setCalendarEvents(events);
+          }
+        } catch { /* silent — brief still works without calendar */ }
+      }
+      // Now fetch brief with whatever events we got
+      aiBriefFetchedAt.current = null;
+      fetchAiBriefWith(events);
+    };
+
+    doFetch();
+  }, [weather, briefMode, aiBriefInitialFetched]);
 
 
   // Loading
@@ -1784,10 +1788,8 @@ export default function App() {
   const shortBrief = generateShortBrief(current, hourly, daily);
   const tomorrowSummary = generateTomorrowSummary(daily);
 
-  const fetchAiBrief = async () => {
+  const fetchAiBriefWith = async (eventsOverride) => {
     if (aiBriefLoading) return;
-    // Skip if existing brief is still fresh
-    if (aiBrief && aiBriefFetchedAt.current && (Date.now() - aiBriefFetchedAt.current < AI_BRIEF_TTL)) return;
     setAiBrief(null);
     setAiBriefTomorrow(null);
     setAiBriefLoading(true);
@@ -1797,14 +1799,11 @@ export default function App() {
       const timeOfDay = hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : 'evening';
       const sunriseStr = daily.sunrise?.[0] ? new Date(daily.sunrise[0]).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : '';
       const sunsetStr = daily.sunset?.[0] ? new Date(daily.sunset[0]).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : '';
-
-      // Next 6 hours precip probs
       const upcomingPrecip = hourly.time
         .map((t, i) => ({ time: new Date(t), prob: hourly.precipitation_probability[i] }))
         .filter(h => h.time > now && h.time < new Date(now.getTime() + 6 * 60 * 60 * 1000))
         .map(h => `${h.time.getHours() % 12 || 12}${h.time.getHours() >= 12 ? 'pm' : 'am'}: ${h.prob}%`)
         .join(', ');
-
       const res = await fetch('/api/brief', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1838,7 +1837,7 @@ export default function App() {
           timeOfDay,
           tone: briefTone,
           profile,
-          calendarEvents,
+          calendarEvents: eventsOverride !== undefined ? eventsOverride : calendarEvents,
         }),
       });
       const data = await res.json();
@@ -1854,6 +1853,8 @@ export default function App() {
       setAiBriefLoading(false);
     }
   };
+
+  const fetchAiBrief = () => fetchAiBriefWith(undefined);
 
   // Background
   const isDay = current.is_day;

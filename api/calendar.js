@@ -51,15 +51,15 @@ function parseICS(text) {
   return events;
 }
 
-function formatTime(date) {
+function formatTime(date, tz) {
   if (!date) return null;
-  return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+  return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: tz });
 }
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const { url } = req.body;
+  const { url, tz = 'UTC' } = req.body;
   if (!url || typeof url !== 'string') return res.status(400).json({ error: 'Missing url' });
   if (!url.startsWith('http')) return res.status(400).json({ error: 'Invalid URL' });
 
@@ -80,15 +80,26 @@ export default async function handler(req, res) {
 
     const allEvents = parseICS(text);
 
-    const nowUTC = new Date();
-    const d = nowUTC.getUTCDate();
-    const m = nowUTC.getUTCMonth();
-    const y = nowUTC.getUTCFullYear();
-
-    const todayStart    = new Date(Date.UTC(y, m, d, 0, 0, 0));
-    const todayEnd      = new Date(Date.UTC(y, m, d, 23, 59, 59));
-    const tomorrowStart = new Date(Date.UTC(y, m, d + 1, 0, 0, 0));
-    const tomorrowEnd   = new Date(Date.UTC(y, m, d + 1, 23, 59, 59));
+    // Get today/tomorrow boundaries in the user's local timezone
+    const now = new Date();
+    const tzDate = (offsetDays = 0) => {
+      const d = new Date(now);
+      d.setDate(d.getDate() + offsetDays);
+      const str = d.toLocaleDateString('en-CA', { timeZone: tz }); // YYYY-MM-DD
+      return { start: new Date(`${str}T00:00:00`), end: new Date(`${str}T23:59:59`) };
+    };
+    // Adjust boundaries: convert local midnight to UTC for comparison
+    const localToUTC = (localDate, tzName) => {
+      const s = localDate.toLocaleString('en-US', { timeZone: tzName });
+      const offset = localDate - new Date(s);
+      return new Date(localDate.getTime() + offset);
+    };
+    const todayStr    = now.toLocaleDateString('en-CA', { timeZone: tz });
+    const tomorrowStr = new Date(now.getTime() + 86400000).toLocaleDateString('en-CA', { timeZone: tz });
+    const todayStart    = new Date(`${todayStr}T00:00:00`);
+    const todayEnd      = new Date(`${todayStr}T23:59:59`);
+    const tomorrowStart = new Date(`${tomorrowStr}T00:00:00`);
+    const tomorrowEnd   = new Date(`${tomorrowStr}T23:59:59`);
 
     const filterAndMap = (rangeStart, rangeEnd) => allEvents
       .filter(e => {
@@ -101,8 +112,8 @@ export default async function handler(req, res) {
       .slice(0, 10)
       .map(e => ({
         title:   e.title    || 'Untitled',
-        start:   e.allDay ? 'All day' : formatTime(new Date(e.start)),
-        end:     e.end && !e.allDay ? formatTime(new Date(e.end)) : null,
+        start:   e.allDay ? 'All day' : formatTime(new Date(e.start), tz),
+        end:     e.end && !e.allDay ? formatTime(new Date(e.end), tz) : null,
         location: e.location || null,
         allDay:  e.allDay || false,
       }));
