@@ -1,5 +1,4 @@
 export default async function handler(req, res) {
-  // Only allow POST
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -10,17 +9,17 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { current, hourly, daily, locationName, timeOfDay, tone, profile } = req.body;
+    const { current, hourly, daily, locationName, timeOfDay, tone, profile, calendarEvents } = req.body;
 
     const toneInstructions = {
       friendly: `Tone: Warm and conversational, like a helpful friend. Personable but not over the top.`,
-      facts: `Tone: Concise and factual. No personality, no fluff. Just the key information in plain language. Shorter is better.`,
-      witty: `Tone: Light and playful. A little dry humor or clever observation about the weather is welcome, but keep it natural — don't force it.`,
-      coach: `Tone: Motivational and energetic, like a coach giving a pre-game pep talk. Use the weather as fuel. "Crisp air = perfect conditions." Make them want to get out there.`,
+      facts:    `Tone: Concise and factual. No personality, no fluff. Just the key information in plain language. Shorter is better.`,
+      witty:    `Tone: Light and playful. A little dry humor or clever observation about the weather is welcome, but keep it natural — don't force it.`,
+      coach:    `Tone: Motivational and energetic, like a coach giving a pre-game pep talk. Use the weather as fuel. "Crisp air = perfect conditions." Make them want to get out there.`,
     };
     const toneGuide = toneInstructions[tone] || toneInstructions.friendly;
 
-    // Build profile context
+    // Profile context
     const hasProfile = profile?.name || profile?.activities?.length > 0;
     const activityLabels = {
       running: 'running outdoors', cycling: 'cycling', commute_car: 'driving a car commute',
@@ -29,34 +28,38 @@ export default async function handler(req, res) {
       outdoor_work: 'outdoor work / construction', motorcycling: 'motorcycling',
       fishing: 'fishing', dog_walks: 'walking a dog',
     };
-    const profileContext = hasProfile ? `\nUser profile:
-Name: ${profile.name || 'not provided'}
-Activities affected by weather: ${profile.activities?.map(a => activityLabels[a] || a).join(', ') || 'none specified'}
-` : '';
+    const profileContext = hasProfile
+      ? `User profile:\nName: ${profile.name || 'not provided'}\nActivities affected by weather: ${profile.activities?.map(a => activityLabels[a] || a).join(', ') || 'none specified'}`
+      : '';
 
-    const weatherContext = `
-Location: ${locationName}
-Time of day: ${timeOfDay}
-Current hour: ${current.hour || 'unknown'}
+    // Calendar context — today + tomorrow
+    const todayEvents  = calendarEvents?.today  || [];
+    const tomorrowEvts = calendarEvents?.tomorrow || [];
+    const hasCalendarToday    = todayEvents.length > 0;
+    const hasCalendarTomorrow = tomorrowEvts.length > 0;
+
+    const fmtEvent = ev =>
+      `- ${ev.allDay ? 'All day' : `${ev.start}${ev.end ? `–${ev.end}` : ''}`}: ${ev.title}${ev.location ? ` @ ${ev.location}` : ''}`;
+
+    const calendarContext = (hasCalendarToday || hasCalendarTomorrow) ? [
+      hasCalendarToday    ? `Today's calendar events:\n${todayEvents.map(fmtEvent).join('\n')}`    : '',
+      hasCalendarTomorrow ? `Tomorrow's calendar events:\n${tomorrowEvts.map(fmtEvent).join('\n')}` : '',
+    ].filter(Boolean).join('\n\n') : '';
+
+    // Weather data block
+    const weatherContext = `Location: ${locationName}
+Time of day: ${timeOfDay} (hour: ${current.hour || 'unknown'})
 Current temp: ${current.temp}°F (feels like ${current.feelsLike}°F)
 Conditions: ${current.conditions}
 Wind: ${current.windDir} ${current.windSpeed} mph, gusts ${current.gustSpeed} mph
-Humidity: ${current.humidity}%
-Dew point: ${current.dewPoint}°F
-Cloud cover: ${current.cloudCover}%
-UV index max today: ${current.uvMax}
+Humidity: ${current.humidity}% | Dew point: ${current.dewPoint}°F
+Cloud cover: ${current.cloudCover}% | UV index max: ${current.uvMax}
 
-Today: High ${daily.todayHigh}°F, Low ${daily.todayLow}°F
-Precipitation chance today: ${daily.todayPrecipChance}%
+Today: High ${daily.todayHigh}°F / Low ${daily.todayLow}°F | Precip chance: ${daily.todayPrecipChance}%
+Next few hours precip probability: ${hourly.precipProbs}
+Sunrise: ${daily.sunrise} | Sunset: ${daily.sunset}
 
-Tomorrow: ${daily.tomorrowConditions}, High ${daily.tomorrowHigh}°F / Low ${daily.tomorrowLow}°F
-Tomorrow precipitation chance: ${daily.tomorrowPrecipChance}%
-
-Next few hours precipitation probability: ${hourly.precipProbs}
-
-Sunrise: ${daily.sunrise}
-Sunset: ${daily.sunset}
-`;
+Tomorrow: ${daily.tomorrowConditions}, High ${daily.tomorrowHigh}°F / Low ${daily.tomorrowLow}°F | Precip: ${daily.tomorrowPrecipChance}%`;
 
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -67,60 +70,39 @@ Sunset: ${daily.sunset}
       },
       body: JSON.stringify({
         model: 'claude-haiku-4-5-20251001',
-        max_tokens: 300,
-        messages: [
-          {
-            role: 'user',
-            content: `You are a weather briefer for a personal weather app called "My Weather."
+        max_tokens: 350,
+        messages: [{
+          role: 'user',
+          content: `You are a weather briefer for a personal weather app called "My Weather."
 
 ${toneGuide}
-${profileContext ? `\n${profileContext}` : ''}
-${profile?.name ? `Address the user by name (${profile.name}) naturally — not every sentence, just once if it fits.` : ''}
-${profile?.activities?.length > 0 ? `The user does these activities. If weather significantly affects any of them today, mention it with specific practical advice. Don't force it if conditions are mild.` : ''}
-
-Write a brief weather summary based on this data. 
+${profileContext ? `\n${profileContext}\n` : ''}${profile?.name ? `Address the user by name (${profile.name}) naturally — once if it fits, not every sentence.\n` : ''}${profile?.activities?.length > 0 ? `The user does these activities. If weather significantly affects any today, mention it with specific practical advice. Don't force it if conditions are mild.\n` : ''}${calendarContext ? `\n${calendarContext}\n\nCalendar instructions: Cross-reference weather timing with their events. Flag it when weather will meaningfully affect a specific event — be specific: "You've got a 6pm soccer game — storms are likely by then." Skip events where weather is irrelevant (indoor meetings, etc.). Use tomorrow's events only in the TOMORROW sentence.\n` : ''}
+Write a brief weather summary based on this data.
 
 CRITICAL — Time awareness:
-- The current time of day is: ${timeOfDay} (hour: ${current.hour || 'unknown'})
-- Your brief should be about what's AHEAD, not a recap of the whole day.
-- Morning: Focus on the day ahead — what to expect going out the door.
-- Afternoon: Focus on the rest of today and this evening. Don't mention the morning.
-- Evening/night: Focus on tonight and overnight. The day is done — don't forecast it.
-- Use the "next few hours precipitation probability" data to be specific about what's coming.
-- Reference timeframes like "this afternoon," "tonight," "the next few hours" — not "today" as a whole.
+- Current time of day: ${timeOfDay} (hour: ${current.hour || 'unknown'})
+- Brief should cover what's AHEAD, not a recap.
+- Morning: focus on the day ahead. Afternoon: rest of today + evening. Evening: tonight + overnight only.
+- Reference timeframes like "this afternoon," "tonight" — not "today" as a whole.
 
 Rules:
-- Write 2-4 sentences for the main brief
-- Be conversational and human, like a helpful friend — not a meteorologist
-- Lead with what matters most RIGHT NOW and in the hours ahead
-- Include practical advice when relevant (umbrella, sunscreen, jacket, etc.)
-- Don't just list numbers — interpret them for the person
-- No greeting or sign-off, just the brief
-- Use plain language, no jargon
-- Be concise but warm
+- 2–4 sentences for the main brief
+- Conversational, not meteorologist-speak
+- Lead with what matters most right now
+- Practical advice when relevant (umbrella, jacket, sunscreen)
+- Interpret numbers, don't just list them
+- No greeting or sign-off
 
-Important context for interpreting moisture:
-- USE DEW POINT, not humidity, to judge how the air feels. Humidity percentage is misleading without temperature context.
-- High humidity (90%+) at cold temps (below 50°F) is normal and NOT sticky/muggy — it just means damp, raw cold air. Don't call it "sticky."
-- Dew point below 50°F = comfortable. 50-60°F = noticeable. 60-65°F = muggy. 65-70°F = very uncomfortable. Above 70°F = dangerous, your body can't cool itself.
-- Only mention humidity/moisture if the dew point is actually high enough to affect comfort (above 55°F).
+Moisture guidance:
+- Use dew point, not humidity %, to judge comfort
+- Dew point <50°F = comfortable | 50–60° = noticeable | 60–65° = muggy | 65–70° = very uncomfortable | >70° = dangerous
+- Only mention moisture if dew point is above 55°F
 
-Then write EXACTLY the word "TOMORROW:" on its own line (this is critical for parsing), followed by one sentence about tomorrow's forecast. Do NOT start the tomorrow sentence with the word "Tomorrow" since the app already labels it.
-
-Example format (morning):
-It's a crisp one out there at 38°F, but we're heading up to a pleasant 55° this afternoon. No rain in sight — you're clear all day. A light jacket should do it.
-
-TOMORROW: Partly cloudy with a high near 62° — even nicer than today.
-
-Example format (evening):
-Cooling down to 45° tonight under clear skies — perfect sleeping weather. No rain expected overnight, and winds are calm.
-
-TOMORROW: Mostly sunny and warmer, highs near 68°. A really nice day ahead.
+Then write EXACTLY "TOMORROW:" on its own line, followed by one sentence about tomorrow. Do NOT start with the word "Tomorrow."
 
 Weather data:
 ${weatherContext}`
-          }
-        ]
+        }]
       })
     });
 
@@ -132,15 +114,16 @@ ${weatherContext}`
 
     const data = await response.json();
     const text = data.content?.[0]?.text || '';
-
-    // Split into main brief and tomorrow
     const parts = text.split(/TOMORROW:\s*/i);
-    const mainBrief = (parts[0] || '').trim();
-    const tomorrowBrief = (parts[1] || '').trim();
 
     return res.status(200).json({
-      brief: mainBrief,
-      tomorrow: tomorrowBrief || null,
+      brief:    (parts[0] || '').trim(),
+      tomorrow: (parts[1] || '').trim() || null,
+      _debug: {
+        calendarEventsReceived: calendarEvents,
+        calendarContext,
+        promptLength: text.length,
+      },
     });
 
   } catch (err) {

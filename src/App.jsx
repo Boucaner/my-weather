@@ -1742,6 +1742,7 @@ export default function App() {
         }),
       });
       const data = await res.json();
+      if (data._debug) console.log('[Brief debug]', JSON.stringify(data._debug, null, 2));
       if (data.error) throw new Error(data.error);
       setAiBrief(data.brief);
       if (data.tomorrow) setAiBriefTomorrow(data.tomorrow);
