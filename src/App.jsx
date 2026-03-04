@@ -31,9 +31,10 @@ const THEME = {
 };
 
 const FONT_SIZES = {
-  small: { label: "S", scale: 1.0 },
-  medium: { label: "M", scale: 1.2 },
-  large: { label: "L", scale: 1.45 },
+  small:  { label: "S",  scale: 1.0  },
+  medium: { label: "M",  scale: 1.2  },
+  large:  { label: "L",  scale: 1.45 },
+  xl:     { label: "XL", scale: 1.7  },
 };
 
 function AlertBanner({ alerts, scale }) {
