@@ -80,26 +80,29 @@ export default async function handler(req, res) {
 
     const allEvents = parseICS(text);
 
-    // Get today/tomorrow boundaries in the user's local timezone
+    // Get today/tomorrow boundaries correctly converted to UTC
     const now = new Date();
-    const tzDate = (offsetDays = 0) => {
-      const d = new Date(now);
-      d.setDate(d.getDate() + offsetDays);
-      const str = d.toLocaleDateString('en-CA', { timeZone: tz }); // YYYY-MM-DD
-      return { start: new Date(`${str}T00:00:00`), end: new Date(`${str}T23:59:59`) };
-    };
-    // Adjust boundaries: convert local midnight to UTC for comparison
-    const localToUTC = (localDate, tzName) => {
-      const s = localDate.toLocaleString('en-US', { timeZone: tzName });
-      const offset = localDate - new Date(s);
-      return new Date(localDate.getTime() + offset);
-    };
     const todayStr    = now.toLocaleDateString('en-CA', { timeZone: tz });
     const tomorrowStr = new Date(now.getTime() + 86400000).toLocaleDateString('en-CA', { timeZone: tz });
-    const todayStart    = new Date(`${todayStr}T00:00:00`);
-    const todayEnd      = new Date(`${todayStr}T23:59:59`);
-    const tomorrowStart = new Date(`${tomorrowStr}T00:00:00`);
-    const tomorrowEnd   = new Date(`${tomorrowStr}T23:59:59`);
+
+    // Convert a YYYY-MM-DD date string to UTC timestamps for start/end of that day in the user's tz
+    const localDayBounds = (dateStr) => {
+      // Find the UTC offset for this timezone on this date by formatting a known UTC time
+      const probe = new Date(`${dateStr}T12:00:00Z`); // noon UTC as reference
+      const localNoon = probe.toLocaleString('en-CA', { timeZone: tz, hour12: false,
+        year: 'numeric', month: '2-digit', day: '2-digit',
+        hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      const [, timePart] = localNoon.split(', ');
+      const [h, m, s] = timePart.split(':').map(Number);
+      // offset = how many ms UTC noon differs from local noon
+      const offsetMs = (12 * 3600 - (h * 3600 + m * 60 + s)) * 1000;
+      const start = new Date(`${dateStr}T00:00:00Z`).getTime() + offsetMs;
+      const end   = new Date(`${dateStr}T23:59:59Z`).getTime() + offsetMs;
+      return { start: new Date(start), end: new Date(end) };
+    };
+
+    const { start: todayStart,    end: todayEnd    } = localDayBounds(todayStr);
+    const { start: tomorrowStart, end: tomorrowEnd } = localDayBounds(tomorrowStr);
 
     const filterAndMap = (rangeStart, rangeEnd) => allEvents
       .filter(e => {
