@@ -1573,7 +1573,8 @@ export default function App() {
     if (mins < 1) return { text: 'Just updated', color: THEME.textFaint };
     if (mins < 15) return { text: `Updated ${mins}m ago`, color: THEME.textFaint };
     if (mins < 30) return { text: `Updated ${mins}m ago`, color: '#f4a261' };
-    return { text: `Updated ${mins}m ago — pull to refresh`, color: '#e76f51' };
+    if (mins < 60) return { text: `Updated ${mins}m ago — pull to refresh`, color: '#e76f51' };
+    return { text: `Over an hour ago — pull to refresh`, color: '#e76f51' };
   };
 
   // View transition key
