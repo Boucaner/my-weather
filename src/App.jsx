@@ -1047,6 +1047,224 @@ function NotificationSheet({ show, onClose, notifPrefs, onSave, scale }) {
   );
 }
 
+function CommuteSheet({ show, onClose, commutePrefs, onSave, scale }) {
+  const s = scale;
+  const [dep, setDep] = useState(commutePrefs.departure || null);
+  const [ret, setRet] = useState(commutePrefs.return || null);
+  const [workLoc, setWorkLoc] = useState(commutePrefs.workLocation || null);
+  const [query, setQuery] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [searching, setSearching] = useState(false);
+  const searchTimeout = useRef(null);
+
+  useEffect(() => {
+    setDep(commutePrefs.departure || null);
+    setRet(commutePrefs.return || null);
+    setWorkLoc(commutePrefs.workLocation || null);
+  }, [commutePrefs.departure, commutePrefs.return, commutePrefs.workLocation]);
+
+  useEffect(() => {
+    if (!query.trim()) { setSearchResults([]); return; }
+    clearTimeout(searchTimeout.current);
+    searchTimeout.current = setTimeout(async () => {
+      setSearching(true);
+      try {
+        const res = await fetch(
+          `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=5&addressdetails=1`,
+          { headers: { 'User-Agent': 'MyWeatherApp/1.0' } }
+        );
+        const data = await res.json();
+        setSearchResults(data.map(r => ({
+          id: r.place_id,
+          lat: parseFloat(r.lat),
+          lon: parseFloat(r.lon),
+          name: r.address?.city || r.address?.town || r.address?.village || r.address?.county || r.display_name.split(',')[0],
+          region: r.address?.state || r.address?.country || '',
+        })));
+      } catch {}
+      setSearching(false);
+    }, 400);
+  }, [query]);
+
+  const handleSave = () => {
+    onSave({ departure: dep, return: ret, workLocation: workLoc });
+    onClose();
+  };
+
+  if (!show) return null;
+
+  const hours = [1,2,3,4,5,6,7,8,9,10,11,12];
+
+  const TimePicker = ({ label, value, onChange }) => {
+    const h = value?.hour ?? null;
+    const ap = value?.ampm ?? 'AM';
+    const isSet = value !== null;
+    return (
+      <div style={{ marginBottom: '24px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+          <div style={{ fontFamily: THEME.fonts.mono, fontSize: `${9 * s}px`, letterSpacing: '1.5px', color: THEME.textFaint }}>{label}</div>
+          {isSet && (
+            <button onClick={() => onChange(null)} style={{
+              background: 'transparent', border: 'none',
+              color: THEME.textFaint, fontSize: `${12 * s}px`, cursor: 'pointer', padding: '2px 6px',
+            }}>Clear</button>
+          )}
+        </div>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '6px', flex: 1 }}>
+            {hours.map(n => (
+              <button key={n} onClick={() => onChange({ hour: n, ampm: ap ?? 'AM' })} style={{
+                padding: '10px 4px', borderRadius: '8px', cursor: 'pointer',
+                background: h === n ? 'rgba(94,177,191,0.15)' : 'rgba(255,255,255,0.04)',
+                border: h === n ? '1px solid rgba(94,177,191,0.35)' : `1px solid ${THEME.border}`,
+                color: h === n ? THEME.accent : THEME.textSecondary,
+                fontSize: `${13 * s}px`, fontWeight: h === n ? 600 : 400, fontFamily: THEME.fonts.mono,
+              }}>{n}</button>
+            ))}
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            {['AM', 'PM'].map(p => (
+              <button key={p} onClick={() => onChange({ hour: h ?? 8, ampm: p })} style={{
+                padding: '10px 14px', borderRadius: '8px', cursor: 'pointer',
+                background: ap === p && isSet ? 'rgba(94,177,191,0.15)' : 'rgba(255,255,255,0.04)',
+                border: ap === p && isSet ? '1px solid rgba(94,177,191,0.35)' : `1px solid ${THEME.border}`,
+                color: ap === p && isSet ? THEME.accent : THEME.textSecondary,
+                fontSize: `${13 * s}px`, fontWeight: ap === p && isSet ? 600 : 400, fontFamily: THEME.fonts.mono,
+              }}>{p}</button>
+            ))}
+          </div>
+        </div>
+        {isSet && (
+          <div style={{ marginTop: '10px', fontSize: `${13 * s}px`, color: THEME.textMuted, textAlign: 'center', fontFamily: THEME.fonts.mono }}>
+            {h}:00 {ap}
+          </div>
+        )}
+        {!isSet && (
+          <div style={{ marginTop: '10px', fontSize: `${12 * s}px`, color: THEME.textFaint, textAlign: 'center' }}>Tap an hour to set</div>
+        )}
+      </div>
+    );
+  };
+
+  return (
+    <>
+      <div onClick={onClose} style={{
+        position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)',
+        backdropFilter: 'blur(4px)', zIndex: 200,
+      }} />
+      <div style={{
+        position: 'fixed', bottom: 0, left: '50%', transform: 'translateX(-50%)',
+        width: '100%', maxWidth: '480px',
+        background: '#16161f', borderRadius: '20px 20px 0 0',
+        border: '1px solid rgba(255,255,255,0.08)',
+        zIndex: 201, padding: '0 24px 40px',
+        boxShadow: '0 -20px 60px rgba(0,0,0,0.6)',
+        maxHeight: '88vh', display: 'flex', flexDirection: 'column',
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'center', padding: '12px 0 4px', flexShrink: 0 }}>
+          <div style={{ width: '36px', height: '4px', borderRadius: '2px', background: 'rgba(255,255,255,0.15)' }} />
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0 20px', flexShrink: 0 }}>
+          <div>
+            <div style={{ fontFamily: THEME.fonts.mono, fontSize: `${9 * s}px`, letterSpacing: '2px', color: THEME.accent, marginBottom: '4px' }}>COMMUTE</div>
+            <div style={{ fontSize: `${12 * s}px`, color: THEME.textMuted }}>Weather at your commute times</div>
+          </div>
+          <button onClick={onClose} style={{
+            background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)',
+            borderRadius: '50%', width: '28px', height: '28px',
+            color: THEME.textMuted, fontSize: '14px', cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>×</button>
+        </div>
+
+        <div style={{ overflowY: 'auto', flex: 1 }}>
+          {/* Work Location */}
+          <div style={{ marginBottom: '28px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+              <div style={{ fontFamily: THEME.fonts.mono, fontSize: `${9 * s}px`, letterSpacing: '1.5px', color: THEME.textFaint }}>WORK LOCATION</div>
+              {workLoc && (
+                <button onClick={() => { setWorkLoc(null); setQuery(''); }} style={{
+                  background: 'transparent', border: 'none',
+                  color: THEME.textFaint, fontSize: `${12 * s}px`, cursor: 'pointer', padding: '2px 6px',
+                }}>Clear</button>
+              )}
+            </div>
+            {workLoc ? (
+              <div style={{
+                padding: '12px 14px', borderRadius: '10px',
+                background: 'rgba(94,177,191,0.08)', border: '1px solid rgba(94,177,191,0.2)',
+                fontSize: `${14 * s}px`, color: THEME.accent,
+              }}>📍 {workLoc.name}</div>
+            ) : (
+              <div style={{ position: 'relative' }}>
+                <input
+                  type="text"
+                  placeholder="Search city or neighborhood..."
+                  value={query}
+                  onChange={e => setQuery(e.target.value)}
+                  style={{
+                    width: '100%', background: 'rgba(255,255,255,0.06)',
+                    border: `1px solid ${THEME.border}`, borderRadius: '10px',
+                    padding: '12px 16px', color: THEME.textPrimary,
+                    fontSize: `${14 * s}px`, fontFamily: THEME.fonts.sans,
+                    outline: 'none', boxSizing: 'border-box',
+                  }}
+                />
+                {searching && (
+                  <div style={{ position: 'absolute', right: '14px', top: '50%', transform: 'translateY(-50%)', color: THEME.textFaint, fontSize: '12px' }}>...</div>
+                )}
+                {searchResults.length > 0 && (
+                  <div style={{
+                    marginTop: '8px', borderRadius: '10px',
+                    border: `1px solid ${THEME.border}`, overflow: 'hidden',
+                    background: '#1a1a26',
+                  }}>
+                    {searchResults.map((r, i) => (
+                      <div key={r.id} onClick={() => {
+                        setWorkLoc({ lat: r.lat, lon: r.lon, name: `${r.name}${r.region ? ', ' + r.region : ''}` });
+                        setQuery(''); setSearchResults([]);
+                      }} style={{
+                        padding: '12px 14px', cursor: 'pointer',
+                        borderBottom: i < searchResults.length - 1 ? `1px solid ${THEME.borderSubtle}` : 'none',
+                      }}
+                        onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.04)'}
+                        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                      >
+                        <div style={{ fontSize: `${14 * s}px`, color: THEME.textPrimary }}>{r.name}</div>
+                        <div style={{ fontSize: `${11 * s}px`, color: THEME.textMuted }}>{r.region}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          <TimePicker label="DEPARTURE" value={dep} onChange={setDep} />
+          <TimePicker label="RETURN" value={ret} onChange={setRet} />
+
+          <div style={{
+            padding: '12px 14px', marginBottom: '20px',
+            background: 'rgba(94,177,191,0.04)', borderRadius: '8px',
+            border: '1px solid rgba(94,177,191,0.1)',
+            fontSize: `${12 * s}px`, color: THEME.textMuted, lineHeight: 1.6,
+          }}>
+            💡 The brief will include conditions at your departure (home) and return (work location) times so you know what to pack and what to expect heading home.
+          </div>
+        </div>
+
+        <button onClick={handleSave} style={{
+          flexShrink: 0, width: '100%', padding: '14px',
+          background: 'rgba(94,177,191,0.15)', border: '1px solid rgba(94,177,191,0.3)',
+          borderRadius: '12px', color: THEME.accent,
+          fontSize: `${14 * s}px`, fontWeight: 600,
+          cursor: 'pointer', fontFamily: THEME.fonts.sans,
+        }}>Save</button>
+      </div>
+    </>
+  );
+}
+
 const PRIVACY_LABELS = {
   'mw-activeLocation':  { label: 'Active Location',       icon: '📍', },
   'mw-savedLocations':  { label: 'Saved Locations',       icon: '🏙️', },
@@ -1059,6 +1277,7 @@ const PRIVACY_LABELS = {
   'mw-notifications':   { label: 'Notification Settings', icon: '🔔', },
   'mw-notifLastShown':  { label: 'Last Notification',     icon: '🕐', },
   'mw-calendar':        { label: 'Calendar ICS URL',      icon: '📅', },
+  'mw-commute':         { label: 'Commute Times',         icon: '🚗', },
 };
 
 function PrivacySheet({ show, onClose, scale }) {
@@ -1099,6 +1318,13 @@ function PrivacySheet({ show, onClose, scale }) {
       if (key === 'mw-notifications') return parsed.enabled ? `${parsed.hour}:00 ${parsed.ampm}` : 'Off';
       if (key === 'mw-notifLastShown') return new Date(parsed).toLocaleDateString();
       if (key === 'mw-calendar') return parsed.enabled ? 'Connected' : 'Saved (disabled)';
+      if (key === 'mw-commute') {
+        const parts = [];
+        if (parsed.workLocation) parts.push(`Work: ${parsed.workLocation.name}`);
+        if (parsed.departure) parts.push(`Dep ${parsed.departure.hour}:00 ${parsed.departure.ampm}`);
+        if (parsed.return) parts.push(`Ret ${parsed.return.hour}:00 ${parsed.return.ampm}`);
+        return parts.length ? parts.join(' · ') : 'Not set';
+      }
       return String(parsed);
     } catch { return raw; }
   };
@@ -1214,7 +1440,7 @@ function PrivacySheet({ show, onClose, scale }) {
   );
 }
 
-function SettingsSheet({ show, onClose, onOpenLocations, onOpenProfile, onOpenNotifications, onOpenPrivacy, onOpenCalendar, profile, notifPrefs, calendarUrl, fontSize, onFontSize, briefMode, onBriefMode, briefTone, onBriefTone, tempUnit, onTempUnit, locationName, scale }) {
+function SettingsSheet({ show, onClose, onOpenLocations, onOpenProfile, onOpenNotifications, onOpenPrivacy, onOpenCalendar, onOpenCommute, profile, notifPrefs, calendarUrl, commutePrefs, fontSize, onFontSize, briefMode, onBriefMode, briefTone, onBriefTone, tempUnit, onTempUnit, locationName, scale }) {
   if (!show) return null;
   const s = scale;
 
@@ -1310,6 +1536,22 @@ function SettingsSheet({ show, onClose, onOpenLocations, onOpenProfile, onOpenNo
             <div style={sublabelStyle}>{calendarUrl ? '✓ Connected' : 'Connect for event-aware briefs'}</div>
           </div>
           <span style={{ color: calendarUrl ? THEME.accent : THEME.textFaint, fontSize: '16px' }}>{calendarUrl ? '✓' : '›'}</span>
+        </div>
+
+        {/* Commute */}
+        <div style={{ ...rowStyle, cursor: 'pointer' }} onClick={onOpenCommute}>
+          <div>
+            <div style={labelStyle}>Commute</div>
+            <div style={sublabelStyle}>
+              {(commutePrefs?.departure || commutePrefs?.return || commutePrefs?.workLocation)
+                ? [commutePrefs.workLocation ? `📍 ${commutePrefs.workLocation.name}` : null,
+                   commutePrefs.departure ? `↑ ${commutePrefs.departure.hour}:00 ${commutePrefs.departure.ampm}` : null,
+                   commutePrefs.return    ? `↓ ${commutePrefs.return.hour}:00 ${commutePrefs.return.ampm}`    : null]
+                  .filter(Boolean).join('  ·  ')
+                : 'Set work location & commute times'}
+            </div>
+          </div>
+          <span style={{ color: THEME.textFaint, fontSize: '16px' }}>›</span>
         </div>
 
         {/* Location */}
@@ -1541,6 +1783,16 @@ export default function App() {
     if (!prefs.enabled) setCalendarEvents(null);
   };
 
+  const [commutePrefs, setCommutePrefsState] = useState(() => {
+    try { const c = localStorage.getItem('mw-commute'); return c ? JSON.parse(c) : { departure: null, return: null }; } catch { return { departure: null, return: null }; }
+  });
+  const [showCommute, setShowCommute] = useState(false);
+
+  const updateCommutePrefs = (prefs) => {
+    setCommutePrefsState(prefs);
+    localStorage.setItem('mw-commute', JSON.stringify(prefs));
+  };
+
 
   const updateActiveLocation = (loc) => {
     setActiveLocationState(loc);
@@ -1706,6 +1958,50 @@ export default function App() {
         .filter(x => x.time > now && x.time < new Date(now.getTime() + 6 * 60 * 60 * 1000))
         .map(x => `${x.time.getHours() % 12 || 12}${x.time.getHours() >= 12 ? 'pm' : 'am'}: ${x.prob}%`)
         .join(', ');
+      // Build commute context — home weather at departure, work weather at return
+      const buildCommuteContext = async () => {
+        const parts = [];
+        const toH24 = (p) => { if (!p) return null; let hr = p.hour % 12; if (p.ampm === 'PM') hr += 12; return hr; };
+        const getHourlyAt = (times, temps, precipProbs, codes, isdays, targetH24) => {
+          const idx = times.findIndex(t => new Date(t).getHours() === targetH24);
+          if (idx === -1) return null;
+          return { temp: Math.round(temps[idx]), precip: precipProbs[idx], code: getWeatherInfo(codes[idx], isdays[idx]).label };
+        };
+
+        // Departure — home location weather
+        if (commutePrefs?.departure) {
+          const h24 = toH24(commutePrefs.departure);
+          const wx = getHourlyAt(h.time, h.temperature_2m, h.precipitation_probability, h.weather_code, h.is_day, h24);
+          if (wx) parts.push(`Departure from home (${commutePrefs.departure.hour}:00 ${commutePrefs.departure.ampm}): ${wx.temp}°F, ${wx.code}, ${wx.precip}% precip chance`);
+        }
+
+        // Return — work location weather (fetch if set, else fall back to home)
+        if (commutePrefs?.return) {
+          const h24 = toH24(commutePrefs.return);
+          const workLoc = commutePrefs.workLocation;
+          if (workLoc?.lat && workLoc?.lon) {
+            try {
+              const wRes = await fetch(
+                `https://api.open-meteo.com/v1/forecast?latitude=${workLoc.lat}&longitude=${workLoc.lon}&hourly=temperature_2m,precipitation_probability,weather_code,is_day&temperature_unit=fahrenheit&wind_speed_unit=mph&forecast_days=1&timezone=auto`
+              );
+              const wData = await wRes.json();
+              const wx = getHourlyAt(wData.hourly.time, wData.hourly.temperature_2m, wData.hourly.precipitation_probability, wData.hourly.weather_code, wData.hourly.is_day, h24);
+              if (wx) parts.push(`Return from ${workLoc.name} (${commutePrefs.return.hour}:00 ${commutePrefs.return.ampm}): ${wx.temp}°F, ${wx.code}, ${wx.precip}% precip chance`);
+            } catch {
+              // fallback to home weather
+              const wx = getHourlyAt(h.time, h.temperature_2m, h.precipitation_probability, h.weather_code, h.is_day, h24);
+              if (wx) parts.push(`Return (${commutePrefs.return.hour}:00 ${commutePrefs.return.ampm}): ${wx.temp}°F, ${wx.code}, ${wx.precip}% precip chance`);
+            }
+          } else {
+            const wx = getHourlyAt(h.time, h.temperature_2m, h.precipitation_probability, h.weather_code, h.is_day, h24);
+            if (wx) parts.push(`Return (${commutePrefs.return.hour}:00 ${commutePrefs.return.ampm}): ${wx.temp}°F, ${wx.code}, ${wx.precip}% precip chance`);
+          }
+        }
+
+        return parts.length ? `Commute forecast:\n${parts.join('\n')}` : '';
+      };
+      const commuteContext = await buildCommuteContext();
+
       const res = await fetch('/api/brief', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1755,6 +2051,7 @@ export default function App() {
             };
             return { today: evts.today?.filter(pastFilter) || [], tomorrow: evts.tomorrow || [] };
           })(),
+          commuteContext: commuteContext || null,
         }),
       });
       const data = await res.json();
@@ -2306,9 +2603,11 @@ export default function App() {
         onOpenNotifications={() => { setShowSettings(false); setShowNotifications(true); }}
         onOpenPrivacy={() => { setShowSettings(false); setShowPrivacy(true); }}
         onOpenCalendar={() => { setShowSettings(false); setShowCalendar(true); }}
+        onOpenCommute={() => { setShowSettings(false); setShowCommute(true); }}
         profile={profile}
         notifPrefs={notifPrefs}
         calendarUrl={calendarPrefs?.enabled ? calendarPrefs.url : null}
+        commutePrefs={commutePrefs}
         fontSize={fontSize}
         onFontSize={updateFontSize}
         briefMode={briefMode}
@@ -2327,6 +2626,15 @@ export default function App() {
         onClose={() => setShowCalendar(false)}
         calendarPrefs={calendarPrefs}
         onSave={updateCalendarPrefs}
+        scale={s}
+      />
+
+      {/* Commute Sheet */}
+      <CommuteSheet
+        show={showCommute}
+        onClose={() => setShowCommute(false)}
+        commutePrefs={commutePrefs}
+        onSave={updateCommutePrefs}
         scale={s}
       />
 
