@@ -89,10 +89,8 @@ function AlertBanner({ alerts, scale }) {
   );
 }
 
-function HourlyCard({ time, temp, precipProb, code, isDay, scale }) {
+function HourlyCard({ time, temp, precipProb, code, isDay, isNow, scale }) {
   const h = new Date(time).getHours();
-  const now = new Date().getHours();
-  const isNow = h === now;
   const label = isNow ? "Now" : h === 0 ? "12a" : h === 12 ? "12p" : h > 12 ? `${h - 12}p` : `${h}a`;
   const info = getWeatherInfo(code, isDay);
 
@@ -2246,7 +2244,7 @@ export default function App() {
         }}>
           {hourlySlice.map((h, i) => (
             <HourlyCard key={i} time={h.time} temp={h.temp}
-              precipProb={h.precip} code={h.code} isDay={h.isDay} scale={s} />
+              precipProb={h.precip} code={h.code} isDay={h.isDay} isNow={i === 0} scale={s} />
           ))}
         </div>
       )}
