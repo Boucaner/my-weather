@@ -9,7 +9,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { current, hourly, daily, locationName, timeOfDay, tone, profile, calendarEvents } = req.body;
+    const { current, hourly, daily, locationName, timeOfDay, tone, profile, calendarEvents, commuteContext } = req.body;
 
     const toneInstructions = {
       friendly: `Tone: Warm and conversational, like a helpful friend. Personable but not over the top.`,
@@ -76,7 +76,7 @@ Tomorrow: ${daily.tomorrowConditions}, High ${daily.tomorrowHigh}°F / Low ${dai
           content: `You are a weather briefer for a personal weather app called "My Weather."
 
 ${toneGuide}
-${profileContext ? `\n${profileContext}\n` : ''}${profile?.name ? `Address the user by name (${profile.name}) naturally — once if it fits, not every sentence.\n` : ''}${profile?.activities?.length > 0 ? `The user does these activities. If weather significantly affects any today, mention it with specific practical advice. Don't force it if conditions are mild.\n` : ''}${calendarContext ? `\n${calendarContext}\n\nCalendar instructions: The user has outdoor events today. Always acknowledge them — mention conditions relevant to each event (temp, rain chance, wind, UV, etc.) even if weather is pleasant. Be specific and practical: "You've got a beach trip at 2pm — it'll be sunny and hot, pack sunscreen." Mention tomorrow's events only in the TOMORROW sentence.\n` : ''}
+${profileContext ? `\n${profileContext}\n` : ''}${profile?.name ? `Address the user by name (${profile.name}) naturally — once if it fits, not every sentence.\n` : ''}${profile?.activities?.length > 0 ? `The user does these activities. If weather significantly affects any today, mention it with specific practical advice. Don't force it if conditions are mild.\n` : ''}${calendarContext ? `\n${calendarContext}\n\nCalendar instructions: The user has outdoor events today. Always acknowledge them — mention conditions relevant to each event (temp, rain chance, wind, UV, etc.) even if weather is pleasant. Be specific and practical: "You've got a beach trip at 2pm — it'll be sunny and hot, pack sunscreen." Mention tomorrow's events only in the TOMORROW sentence.\n` : ''}${commuteContext ? `\n${commuteContext}\n\nCommute instructions: Mention commute conditions naturally and practically — "Roads will be icy at your 7am departure" or "You'll catch the tail end of the rain on your way home at 5pm." Only flag the commute if conditions at those times are notable (rain, ice, extreme temp, strong wind). Skip it if conditions are benign.\n` : ''}
 Write a brief weather summary based on this data.
 
 CRITICAL — Time awareness:
